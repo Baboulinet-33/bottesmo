@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tusmo</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1><a href="/">Tusmo</a></h1>
+    </header>
+    <main>
+        {{if eq .Page "home"}}
+        <div id="home">
+            <h2>Choisissez un mode de jeu</h2>
+            <button class="mode-btn" data-mode="daily">Mot du jour</button>
+            <button class="mode-btn" data-mode="solo">Solo</button>
+        </div>
+        {{else if eq .Page "game"}}
+        {{template "game.html" .}}
+        {{end}}
+    </main>
+    <script src="/static/app.js"></script>
+</body>
+</html>

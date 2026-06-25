@@ -1,0 +1,212 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    padding: 1rem;
+    text-align: center;
+}
+
+header h1 a {
+    color: #e74c3c;
+    text-decoration: none;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+main {
+    flex: 1;
+    width: 100%;
+    max-width: 600px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#home {
+    text-align: center;
+    padding-top: 3rem;
+}
+
+#home h2 {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    color: #ccc;
+}
+
+.mode-btn {
+    display: block;
+    width: 220px;
+    padding: 1rem 2rem;
+    margin: 0.75rem auto;
+    font-size: 1.1rem;
+    border: 2px solid #e74c3c;
+    background: transparent;
+    color: #e74c3c;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mode-btn:hover {
+    background: #e74c3c;
+    color: #fff;
+}
+
+#grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 1.5rem 0;
+}
+
+.row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.tile {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 2px solid #3a3a5c;
+    border-radius: 4px;
+    background: transparent;
+    transition: all 0.3s;
+}
+
+.tile.submitted {
+    border: none;
+    animation: flip 0.3s ease;
+}
+
+.tile.correct {
+    background: #e74c3c;
+    color: #fff;
+}
+
+.tile.present {
+    background: #f1c40f;
+    color: #fff;
+}
+
+.tile.absent {
+    background: #95a5a6;
+    color: #fff;
+}
+
+.tile.first {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+@keyframes flip {
+    0% { transform: rotateX(0); }
+    50% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+}
+
+#input-area {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+}
+
+#guess-input {
+    padding: 0.75rem 1rem;
+    font-size: 1.25rem;
+    border: 2px solid #3a3a5c;
+    background: #16213e;
+    color: #eee;
+    border-radius: 6px;
+    text-transform: uppercase;
+    text-align: center;
+    width: 200px;
+    outline: none;
+}
+
+#guess-input:focus {
+    border-color: #e74c3c;
+}
+
+#submit-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#submit-btn:hover {
+    background: #c0392b;
+}
+
+#submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#message {
+    min-height: 2rem;
+    text-align: center;
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+#message.win {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+#message.lose {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+#message.error {
+    color: #f1c40f;
+}
+
+#stats {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #999;
+}
+
+@media (max-width: 480px) {
+    .tile {
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
+    }
+    #guess-input {
+        width: 150px;
+        font-size: 1rem;
+    }
+    header h1 a {
+        font-size: 1.5rem;
+    }
+}

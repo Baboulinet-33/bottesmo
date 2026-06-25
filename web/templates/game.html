@@ -1,0 +1,11 @@
+{{define "game.html"}}
+<div id="game" data-mode="{{.Mode}}">
+    <div id="grid"></div>
+    <div id="input-area">
+        <input type="text" id="guess-input" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button id="submit-btn">Valider</button>
+    </div>
+    <div id="message"></div>
+    <div id="stats"></div>
+</div>
+{{end}}

@@ -38,6 +38,12 @@ ACCORD
 ACTION
 ```
 
+Deux fichiers dictionnaire sont utilisés :
+- **`words.txt`** : les mots à deviner (tirés aléatoirement ou quotidiennement).
+- **`words_full.txt`** : tous les mots français valides (utilisé pour valider les propositions des joueurs). Pour l'instant, c'est une copie de `words.txt`.
+
+Vous pouvez remplacer `words_full.txt` par un dictionnaire français complet (ex. liste de mots du Scrabble, Hunspell, etc.) sans rien changer au code.
+
 Après modification, redémarrer le serveur pour prendre en compte les changements.
 
 Les mots sont automatiquement convertis en majuscules au chargement. Les lignes vides sont ignorées.

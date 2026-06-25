@@ -25,6 +25,10 @@ func (g *Game) Guess(word string) ([]LetterResult, error) {
 		return nil, fmt.Errorf("word must be exactly %d letters", g.WordLength)
 	}
 
+	if word[0] != g.Target[0] {
+		return nil, fmt.Errorf("word must start with %c", g.Target[0])
+	}
+
 	targetRunes := []rune(g.Target)
 	guessRunes := []rune(word)
 

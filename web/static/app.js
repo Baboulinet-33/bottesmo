@@ -106,6 +106,13 @@ function enableInput() {
 }
 
 function submitGuess(word) {
+    const firstLetter = gameState.firstLetter;
+    if (word[0] !== firstLetter) {
+        showMessage('Le mot doit commencer par ' + firstLetter, 'error');
+        enableInput();
+        return;
+    }
+
     const input = document.getElementById('guess-input');
     const btn = document.getElementById('submit-btn');
     input.disabled = true;

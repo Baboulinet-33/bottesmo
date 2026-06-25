@@ -1,8 +1,20 @@
-const spellchecker = new Typo("fr_FR", null, null, {
-    dictionaryPath: "/static/lib/typo/"
-});
-
 let gameState = null;
+let dictionaryReady = false;
+
+const spellchecker = new Typo("fr_FR", null, null, {
+    dictionaryPath: "/static/lib/typo/",
+    asyncLoad: true,
+    loadedCallback: function () {
+        dictionaryReady = true;
+        const input = document.getElementById('guess-input');
+        const btn = document.getElementById('submit-btn');
+        if (input && btn && !input.disabled && !btn.disabled) {
+            btn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    }
+});
 
 const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult":""}';
 
@@ -10,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameDiv = document.getElementById('game');
     if (gameDiv) {
         const mode = gameDiv.dataset.mode;
+        showMessage('Chargement du dictionnaire…', 'loading');
         startGame(mode);
         return;
     }
@@ -74,8 +87,11 @@ function setupInput(wordLength) {
 
     if (!input) return;
 
-    input.disabled = false;
-    input.focus();
+    if (dictionaryReady) {
+        input.disabled = false;
+        btn.disabled = false;
+        input.focus();
+    }
 
     const submit = () => {
         const word = input.value.trim().toUpperCase();
@@ -86,7 +102,6 @@ function setupInput(wordLength) {
         submitGuess(word);
     };
 
-    btn.disabled = false;
     btn.onclick = submit;
 
     input.onkeydown = (e) => {
@@ -106,7 +121,7 @@ function submitGuess(word) {
     input.disabled = true;
     btn.disabled = true;
 
-    if (!spellchecker.check(word.toLowerCase())) {
+    if (!dictionaryReady || !spellchecker.check(word.toLowerCase())) {
         showMessage('Mot invalide', 'error');
         input.disabled = false;
         btn.disabled = false;

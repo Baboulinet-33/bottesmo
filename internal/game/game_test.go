@@ -25,16 +25,19 @@ func TestGuessCorrect(t *testing.T) {
 
 func TestGuessAllWrong(t *testing.T) {
 	g := NewGame("ABRITE", ModeSolo)
-	results, err := g.Guess("XYZXYZ")
+	results, err := g.Guess("ANANAS")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if g.Won {
 		t.Error("expected won = false")
 	}
-	for i, r := range results {
-		if r.Status != StatusAbsent {
-			t.Errorf("result[%d] expected StatusAbsent, got %v", i, r.Status)
+	if results[0].Status != StatusCorrect {
+		t.Errorf("result[0] expected StatusCorrect, got %v", results[0].Status)
+	}
+	for i := 1; i < len(results); i++ {
+		if results[i].Status != StatusAbsent {
+			t.Errorf("result[%d] expected StatusAbsent, got %v", i, results[i].Status)
 		}
 	}
 }
@@ -61,11 +64,11 @@ func TestGuessMixed(t *testing.T) {
 
 func TestGuessDuplicateLetters(t *testing.T) {
 	g := NewGame("ACCORD", ModeSolo)
-	results, err := g.Guess("CACTUS")
+	results, err := g.Guess("ABACAS")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	expected := []LetterStatus{StatusPresent, StatusPresent, StatusCorrect, StatusAbsent, StatusAbsent, StatusAbsent}
+	expected := []LetterStatus{StatusCorrect, StatusAbsent, StatusAbsent, StatusPresent, StatusAbsent, StatusAbsent}
 	for i, e := range expected {
 		if results[i].Status != e {
 			t.Errorf("result[%d] (%c) expected %v, got %v", i, results[i].Letter, e, results[i].Status)
@@ -76,7 +79,7 @@ func TestGuessDuplicateLetters(t *testing.T) {
 func TestGuessOverMaxAttempts(t *testing.T) {
 	g := NewGame("ABRITE", ModeSolo)
 	for i := 0; i < 6; i++ {
-		g.Guess("XYZXYZ")
+		g.Guess("ANANAS")
 	}
 	if !g.GameOver {
 		t.Error("expected gameOver after 6 attempts")
@@ -104,6 +107,25 @@ func TestGuessAfterGameOver(t *testing.T) {
 	_, err := g.Guess("ABRITE")
 	if err == nil {
 		t.Error("expected error when game is over")
+	}
+}
+
+func TestGuessWrongFirstLetter(t *testing.T) {
+	g := NewGame("ABRITE", ModeSolo)
+	_, err := g.Guess("ZEBRAS")
+	if err == nil {
+		t.Error("expected error for wrong first letter")
+	}
+}
+
+func TestGuessCorrectFirstLetter(t *testing.T) {
+	g := NewGame("ABRITE", ModeSolo)
+	results, err := g.Guess("ABYSSE")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if results[0].Letter != 'A' || results[0].Status != StatusCorrect {
+		t.Error("expected first letter to be correct")
 	}
 }
 

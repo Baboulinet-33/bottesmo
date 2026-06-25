@@ -185,11 +185,6 @@ main {
     font-weight: bold;
 }
 
-#message.loading {
-    color: #999;
-    font-style: italic;
-}
-
 #message.error {
     color: #f1c40f;
 }

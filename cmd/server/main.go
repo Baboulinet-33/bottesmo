@@ -23,6 +23,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fullDictPath := filepath.Join(wd, "internal", "dictionary", "words_full.txt")
+	if err := dictionary.LoadFull(fullDictPath); err != nil {
+		log.Fatal(err)
+	}
+
 	tmplPattern := filepath.Join(wd, "web", "templates", "*.html")
 	if err := handlers.LoadTemplates(tmplPattern); err != nil {
 		log.Fatal(err)

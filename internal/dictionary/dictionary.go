@@ -12,6 +12,7 @@ import (
 
 var (
 	wordsByLength = make(map[int][]string)
+	fullWordSet   = make(map[string]bool)
 
 	minLen, maxLen int
 )
@@ -55,6 +56,38 @@ func Load(path string) error {
 	return nil
 }
 
+func LoadFull(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("cannot open full dictionary %s: %w", path, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		w := strings.TrimSpace(scanner.Text())
+		w = strings.ToUpper(w)
+		if w == "" {
+			continue
+		}
+		fullWordSet[w] = true
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading full dictionary: %w", err)
+	}
+
+	if len(fullWordSet) == 0 {
+		return fmt.Errorf("full dictionary is empty")
+	}
+
+	return nil
+}
+
+func IsValid(word string) bool {
+	return fullWordSet[strings.ToUpper(word)]
+}
+
 func WordsByLength(length int) []string {
 	return wordsByLength[length]
 }
@@ -87,6 +120,7 @@ func DailyLength(date string) int {
 
 func Reset() {
 	wordsByLength = make(map[int][]string)
+	fullWordSet = make(map[string]bool)
 
 	minLen = 0
 	maxLen = 0

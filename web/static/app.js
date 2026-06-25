@@ -1,20 +1,4 @@
 let gameState = null;
-let dictionaryReady = false;
-
-const spellchecker = new Typo("fr_FR", null, null, {
-    dictionaryPath: "/static/lib/typo/",
-    asyncLoad: true,
-    loadedCallback: function () {
-        dictionaryReady = true;
-        const input = document.getElementById('guess-input');
-        const btn = document.getElementById('submit-btn');
-        if (input && btn && !input.disabled && !btn.disabled) {
-            btn.disabled = false;
-            input.disabled = false;
-            input.focus();
-        }
-    }
-});
 
 const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult":""}';
 
@@ -22,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameDiv = document.getElementById('game');
     if (gameDiv) {
         const mode = gameDiv.dataset.mode;
-        showMessage('Chargement du dictionnaire…', 'loading');
         startGame(mode);
         return;
     }
@@ -87,11 +70,9 @@ function setupInput(wordLength) {
 
     if (!input) return;
 
-    if (dictionaryReady) {
-        input.disabled = false;
-        btn.disabled = false;
-        input.focus();
-    }
+    input.disabled = false;
+    btn.disabled = false;
+    input.focus();
 
     const submit = () => {
         const word = input.value.trim().toUpperCase();
@@ -115,20 +96,20 @@ function setupInput(wordLength) {
     };
 }
 
+function enableInput() {
+    const el = document.getElementById('guess-input');
+    const btn = document.getElementById('submit-btn');
+    el.disabled = false;
+    btn.disabled = false;
+    el.value = '';
+    el.focus();
+}
+
 function submitGuess(word) {
     const input = document.getElementById('guess-input');
     const btn = document.getElementById('submit-btn');
     input.disabled = true;
     btn.disabled = true;
-
-    if (!dictionaryReady || !spellchecker.check(word.toLowerCase())) {
-        showMessage('Mot invalide', 'error');
-        input.disabled = false;
-        btn.disabled = false;
-        input.focus();
-        input.value = '';
-        return;
-    }
 
     fetch('/api/game/guess', {
         method: 'POST',
@@ -137,12 +118,9 @@ function submitGuess(word) {
     })
     .then(res => res.json())
     .then(data => {
-        if (!data.results) {
-            showMessage('Mot invalide', 'error');
-            input.disabled = false;
-            btn.disabled = false;
-            input.focus();
-            input.value = '';
+        if (data.error) {
+            showMessage(data.error, 'error');
+            enableInput();
             return;
         }
 
@@ -161,10 +139,7 @@ function submitGuess(word) {
             updateStats(data.won);
             addReplayButton();
         } else {
-            input.disabled = false;
-            btn.disabled = false;
-            input.value = '';
-            input.focus();
+            enableInput();
         }
     })
     .catch(err => {
@@ -180,10 +155,8 @@ function updateGrid(row, results) {
         const r = results[col];
         tile.textContent = String.fromCharCode(r.Letter);
 
-        let statusClass = '';
-        if (r.Status === 0) statusClass = 'correct';
-        else if (r.Status === 1) statusClass = 'present';
-        else statusClass = 'absent';
+        const statusClasses = ['correct', 'present', 'absent'];
+        const statusClass = statusClasses[r.Status] || 'absent';
 
         setTimeout(() => {
             tile.classList.add('submitted', statusClass);

@@ -29,6 +29,16 @@ var (
 	templates *template.Template
 )
 
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
+}
+
+func isValidMode(mode game.GameMode) bool {
+	return mode == game.ModeDaily || mode == game.ModeSolo
+}
+
 type GameManager struct {
 	dailyWord string
 	dailyDate string
@@ -76,7 +86,7 @@ func (m *GameManager) HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 func (m *GameManager) GamePageHandler(w http.ResponseWriter, r *http.Request) {
 	mode := game.GameMode(r.URL.Query().Get("mode"))
-	if mode != game.ModeDaily && mode != game.ModeSolo {
+	if !isValidMode(mode) {
 		http.Error(w, "invalid mode", http.StatusBadRequest)
 		return
 	}
@@ -122,7 +132,7 @@ func (m *GameManager) NewGameHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mode := game.GameMode(req.Mode)
-	if mode != game.ModeDaily && mode != game.ModeSolo {
+	if !isValidMode(mode) {
 		http.Error(w, "invalid mode", http.StatusBadRequest)
 		return
 	}
@@ -159,8 +169,7 @@ func (m *GameManager) NewGameHandler(w http.ResponseWriter, r *http.Request) {
 		Mode:        string(mode),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 type guessRequest struct {
@@ -198,6 +207,13 @@ func (m *GameManager) GuessHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess.last = time.Now()
+
+	if !dictionary.IsValid(req.Word) {
+		mu.Unlock()
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Mot invalide"})
+		return
+	}
+
 	results, err := sess.game.Guess(req.Word)
 	won := sess.game.Won
 	gameOver := sess.game.GameOver
@@ -206,9 +222,7 @@ func (m *GameManager) GuessHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -223,8 +237,7 @@ func (m *GameManager) GuessHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Word = target
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func CleanupSessions() {

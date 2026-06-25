@@ -18,7 +18,45 @@ func TestDictionaryLoad(t *testing.T) {
 	if err := Load(path); err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
+}
 
+func TestFullDictionaryLoad(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "words_full.txt")
+	content := "ABRITE\nACCORD\nACTION\nBONJOUR\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := LoadFull(path); err != nil {
+		t.Fatalf("LoadFull failed: %v", err)
+	}
+}
+
+func TestIsValid(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "words_full.txt")
+	content := "ABRITE\nACCORD\nACTION\nBONJOUR\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := LoadFull(path); err != nil {
+		t.Fatalf("LoadFull failed: %v", err)
+	}
+
+	if !IsValid("ABRITE") {
+		t.Error("expected ABRITE to be valid")
+	}
+	if !IsValid("bonjour") {
+		t.Error("expected bonjour (lowercase) to be valid")
+	}
+	if IsValid("XXXXXX") {
+		t.Error("expected XXXXXX to be invalid")
+	}
+	if IsValid("") {
+		t.Error("expected empty string to be invalid")
+	}
 }
 
 func TestDailyWordDeterministic(t *testing.T) {

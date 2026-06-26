@@ -12,12 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const homeDiv = document.getElementById('home');
     if (homeDiv) {
-        document.querySelectorAll('.mode-btn').forEach(btn => {
+        document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const mode = btn.dataset.mode;
                 window.location.href = '/game?mode=' + mode;
             });
         });
+        const vsBtn = document.getElementById('vs-mode-btn');
+        if (vsBtn) {
+            vsBtn.addEventListener('click', () => {
+                window.location.href = '/vs';
+            });
+        }
     }
 });
 

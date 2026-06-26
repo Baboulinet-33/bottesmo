@@ -1,0 +1,74 @@
+{{define "vs.html"}}
+<div id="vs-app">
+    <div id="vs-create">
+        <h2>Créer une partie VS</h2>
+        <form id="vs-create-form">
+            <div class="vs-form-group">
+                <label>Type de taille de mot :</label>
+                <div class="vs-radio-group">
+                    <label><input type="radio" name="lengthMode" value="progressive" checked> Progressif (6→10)</label>
+                    <label><input type="radio" name="lengthMode" value="random"> Aléatoire</label>
+                </div>
+            </div>
+            <div class="vs-form-group">
+                <label for="wordCount">Nombre de mots (3–10) :</label>
+                <input type="number" id="wordCount" name="wordCount" min="3" max="10" value="5" class="vs-number-input">
+            </div>
+            <button type="submit" class="mode-btn">Créer une partie</button>
+        </form>
+    </div>
+
+    <div id="vs-lobby" style="display:none">
+        <h2>Salon d'attente</h2>
+        <div class="vs-lobby-section">
+            <label>Lien d'invitation :</label>
+            <div class="vs-copy-row">
+                <input type="text" id="vs-share-link" readonly>
+                <button id="vs-copy-btn" class="vs-small-btn">Copier</button>
+            </div>
+        </div>
+        <div class="vs-lobby-section">
+            <h3>Joueurs (<span id="vs-player-count">0</span>)</h3>
+            <ul id="vs-player-list"></ul>
+        </div>
+        <div class="vs-lobby-actions">
+            <button id="vs-start-btn" class="mode-btn" style="display:none">Commencer</button>
+            <div id="vs-nickname-edit">
+                <label>Votre pseudo :</label>
+                <input type="text" id="vs-nickname-input" maxlength="20">
+                <button id="vs-nickname-save" class="vs-small-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="vs-game" style="display:none">
+        <div id="vs-game-main">
+            <div id="vs-word-progress"><span id="vs-word-label">Mot 1/X</span></div>
+            <div id="vs-grid"></div>
+            <div id="vs-input-area">
+                <input type="text" id="vs-guess-input" maxlength="10" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button id="vs-submit-btn">Valider</button>
+            </div>
+            <div id="vs-message"></div>
+        </div>
+        <div id="vs-sidebar">
+            <h3>Progression</h3>
+            <div id="vs-progress-list"></div>
+        </div>
+    </div>
+
+    <div id="vs-results" style="display:none">
+        <h2>Résultats</h2>
+        <table id="vs-ranking-table">
+            <thead>
+                <tr><th>Rang</th><th>Joueur</th><th>Temps</th></tr>
+            </thead>
+            <tbody id="vs-ranking-body"></tbody>
+        </table>
+        <div class="vs-results-actions">
+            <button id="vs-rematch-btn" class="mode-btn">Rejouer</button>
+            <button id="vs-home-btn" class="mode-btn" onclick="window.location.href='/'">Retour à l'accueil</button>
+        </div>
+    </div>
+</div>
+{{end}}

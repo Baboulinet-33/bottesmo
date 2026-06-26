@@ -114,9 +114,21 @@ main {
     color: #fff;
 }
 
-.tile.first {
-    border-color: #e74c3c;
-    color: #e74c3c;
+.tile.locked {
+    background: #e74c3c;
+    color: #fff;
+    border-color: #a93226;
+    cursor: default;
+}
+
+.tile.cursor {
+    border-color: #fff;
+    animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+    0%, 100% { border-color: #fff; }
+    50% { border-color: #3a3a5c; }
 }
 
 @keyframes flip {
@@ -127,25 +139,8 @@ main {
 
 #input-area {
     display: flex;
-    gap: 8px;
+    justify-content: center;
     margin-bottom: 1rem;
-}
-
-#guess-input {
-    padding: 0.75rem 1rem;
-    font-size: 1.25rem;
-    border: 2px solid #3a3a5c;
-    background: #16213e;
-    color: #eee;
-    border-radius: 6px;
-    text-transform: uppercase;
-    text-align: center;
-    width: 200px;
-    outline: none;
-}
-
-#guess-input:focus {
-    border-color: #e74c3c;
 }
 
 #submit-btn {
@@ -166,6 +161,63 @@ main {
 #submit-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+#keyboard {
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+}
+
+.kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.kb-key {
+    width: 32px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: #3a3a5c;
+    color: #eee;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.kb-key.special {
+    width: 52px;
+    font-size: 0.7rem;
+}
+
+.kb-key:hover {
+    background: #4a4a6c;
+}
+
+.kb-key:active {
+    transform: scale(0.95);
+}
+
+.kb-key.correct {
+    background: #e74c3c;
+}
+
+.kb-key.present {
+    background: #f1c40f;
+    color: #333;
+}
+
+.kb-key.absent {
+    background: #555;
+    color: #999;
 }
 
 #message {
@@ -202,9 +254,14 @@ main {
         height: 42px;
         font-size: 1.2rem;
     }
-    #guess-input {
-        width: 150px;
-        font-size: 1rem;
+    .kb-key {
+        width: 28px;
+        height: 42px;
+        font-size: 0.75rem;
+    }
+    .kb-key.special {
+        width: 44px;
+        font-size: 0.65rem;
     }
     header h1 a {
         font-size: 1.5rem;

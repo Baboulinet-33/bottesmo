@@ -33,8 +33,13 @@ function startGame(mode) {
         gameState.attempts = [];
         gameState.won = false;
         gameState.gameOver = false;
+        gameState.currentRow = 0;
+        gameState.foundLetters = [{position: 0, letter: data.firstLetter}];
+        gameState.lockedPositions = new Set([0]);
+        gameState.letterStatuses = {};
         initGrid(data.wordLength, data.firstLetter);
-        setupInput(data.wordLength);
+        setupCellInput(data.wordLength);
+        renderKeyboard();
     })
     .catch(err => {
         showMessage('Erreur de connexion au serveur', 'error');
@@ -54,68 +59,156 @@ function initGrid(wordLength, firstLetter) {
             const tile = document.createElement('div');
             tile.className = 'tile';
             tile.id = 'tile-' + row + '-' + col;
-            if (row === 0 && col === 0) {
-                tile.textContent = firstLetter;
-                tile.classList.add('first');
-            }
             rowDiv.appendChild(tile);
         }
         grid.appendChild(rowDiv);
     }
+
+    for (const fp of gameState.foundLetters) {
+        const tile = document.getElementById('tile-0-' + fp.position);
+        tile.textContent = fp.letter;
+        tile.classList.add('locked', 'correct');
+    }
+
+    gameState.currentCol = firstUnlockedPosition(0);
+    addCursor();
 }
 
-function setupInput(wordLength) {
-    const input = document.getElementById('guess-input');
+function firstUnlockedPosition(startFrom) {
+    const wordLength = gameState.wordLength;
+    let col = startFrom;
+    while (col < wordLength && gameState.lockedPositions.has(col)) {
+        col++;
+    }
+    return col;
+}
+
+function addCursor() {
+    removeCursor();
+    const row = gameState.currentRow;
+    const col = gameState.currentCol;
+    const tile = document.getElementById('tile-' + row + '-' + col);
+    if (tile) tile.classList.add('cursor');
+}
+
+function removeCursor() {
+    document.querySelectorAll('.tile.cursor').forEach(t => t.classList.remove('cursor'));
+}
+
+function setupCellInput(wordLength) {
     const btn = document.getElementById('submit-btn');
-
-    if (!input) return;
-
-    input.disabled = false;
     btn.disabled = false;
-    input.focus();
 
-    const submit = () => {
-        const word = input.value.trim().toUpperCase();
-        if (word.length !== wordLength) {
+    document.addEventListener('keydown', (e) => {
+        if (gameState.gameOver) return;
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitCurrentWord();
+        } else if (e.key === 'Backspace') {
+            e.preventDefault();
+            handleBackspace();
+        } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+            handleLetter(e.key.toUpperCase());
+        }
+    });
+
+    btn.onclick = () => {
+        if (!gameState.gameOver) submitCurrentWord();
+    };
+}
+
+function handleLetter(letter) {
+    const row = gameState.currentRow;
+    const col = gameState.currentCol;
+    const wordLength = gameState.wordLength;
+
+    if (col >= wordLength) return;
+
+    const tile = document.getElementById('tile-' + row + '-' + col);
+    tile.textContent = letter;
+    tile.classList.remove('locked', 'correct', 'present', 'absent');
+
+    gameState.currentCol = col + 1;
+    addCursor();
+}
+
+function handleBackspace() {
+    const row = gameState.currentRow;
+    const col = gameState.currentCol;
+
+    if (col <= 0) return;
+
+    const newCol = col - 1;
+    const tile = document.getElementById('tile-' + row + '-' + newCol);
+
+    const foundLetter = gameState.foundLetters.find(fp => fp.position === newCol);
+    if (foundLetter) {
+        tile.textContent = foundLetter.letter;
+        tile.classList.add('locked', 'correct');
+        tile.classList.remove('present', 'absent');
+    } else {
+        tile.textContent = '';
+        tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
+    }
+
+    gameState.currentCol = newCol;
+    addCursor();
+}
+
+function submitCurrentWord() {
+    const row = gameState.currentRow;
+    const wordLength = gameState.wordLength;
+    let word = '';
+
+    for (let col = 0; col < wordLength; col++) {
+        const tile = document.getElementById('tile-' + row + '-' + col);
+        const letter = tile.textContent.trim();
+        if (!letter) {
             showMessage('Le mot doit faire ' + wordLength + ' lettres', 'error');
+            resetCurrentRow();
             return;
         }
-        submitGuess(word);
-    };
+        word += letter;
+    }
 
-    btn.onclick = submit;
-
-    input.onkeydown = (e) => {
-        if (e.key === 'Enter') {
-            submit();
-        }
-    };
-
-    input.oninput = () => {
-        input.value = input.value.replace(/[^a-zA-Z]/g, '').toUpperCase();
-    };
+    submitGuess(word);
 }
 
 function enableInput() {
-    const el = document.getElementById('guess-input');
     const btn = document.getElementById('submit-btn');
-    el.disabled = false;
     btn.disabled = false;
-    el.value = '';
-    el.focus();
+    addCursor();
+}
+
+function resetCurrentRow() {
+    const row = gameState.currentRow;
+    const wordLength = gameState.wordLength;
+    for (let col = 0; col < wordLength; col++) {
+        const tile = document.getElementById('tile-' + row + '-' + col);
+        const foundLetter = gameState.foundLetters.find(fp => fp.position === col);
+        if (foundLetter) {
+            tile.textContent = foundLetter.letter;
+            tile.classList.add('locked', 'correct');
+            tile.classList.remove('present', 'absent');
+        } else {
+            tile.textContent = '';
+            tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
+        }
+    }
+    gameState.currentCol = firstUnlockedPosition(0);
+    addCursor();
 }
 
 function submitGuess(word) {
     const firstLetter = gameState.firstLetter;
     if (word[0] !== firstLetter) {
         showMessage('Le mot doit commencer par ' + firstLetter, 'error');
+        resetCurrentRow();
         enableInput();
         return;
     }
 
-    const input = document.getElementById('guess-input');
     const btn = document.getElementById('submit-btn');
-    input.disabled = true;
     btn.disabled = true;
 
     fetch('/api/game/guess', {
@@ -127,12 +220,14 @@ function submitGuess(word) {
     .then(data => {
         if (data.error) {
             showMessage(data.error, 'error');
+            resetCurrentRow();
             enableInput();
             return;
         }
 
         const row = gameState.attempts.length;
         updateGrid(row, data.results);
+        updateKeyboard(data.results);
         gameState.attempts.push(word);
 
         if (data.gameOver) {
@@ -141,19 +236,44 @@ function submitGuess(word) {
             } else {
                 showMessage('Perdu ! Le mot était : ' + data.word, 'lose');
             }
-            input.disabled = true;
             btn.disabled = true;
             updateStats(data.won);
             addReplayButton();
         } else {
+            prepareNextRow(data.results);
             enableInput();
         }
     })
     .catch(err => {
         showMessage('Erreur de connexion', 'error');
-        input.disabled = false;
         btn.disabled = false;
+        addCursor();
     });
+}
+
+function prepareNextRow(results) {
+    const wordLength = gameState.wordLength;
+
+    for (let col = 0; col < results.length; col++) {
+        if (results[col].Status === 0) {
+            const existing = gameState.foundLetters.find(f => f.position === col);
+            if (!existing) {
+                const letter = String.fromCharCode(results[col].Letter);
+                gameState.foundLetters.push({position: col, letter: letter});
+                gameState.lockedPositions.add(col);
+            }
+        }
+    }
+
+    gameState.currentRow++;
+
+    for (const fp of gameState.foundLetters) {
+        const tile = document.getElementById('tile-' + gameState.currentRow + '-' + fp.position);
+        tile.textContent = fp.letter;
+        tile.classList.add('locked', 'correct');
+    }
+
+    gameState.currentCol = firstUnlockedPosition(0);
 }
 
 function updateGrid(row, results) {
@@ -168,6 +288,69 @@ function updateGrid(row, results) {
         setTimeout(() => {
             tile.classList.add('submitted', statusClass);
         }, col * 100);
+    }
+}
+
+function updateKeyboard(results) {
+    for (const r of results) {
+        const letter = String.fromCharCode(r.Letter);
+        const status = r.Status;
+        if (gameState.letterStatuses[letter] === undefined || status < gameState.letterStatuses[letter]) {
+            gameState.letterStatuses[letter] = status;
+        }
+    }
+
+    const statusClasses = ['correct', 'present', 'absent'];
+    document.querySelectorAll('.kb-key').forEach(key => {
+        const letter = key.dataset.key;
+        const status = gameState.letterStatuses[letter];
+        key.classList.remove('correct', 'present', 'absent');
+        if (status !== undefined) {
+            key.classList.add(statusClasses[status]);
+        }
+    });
+}
+
+function renderKeyboard() {
+    const container = document.getElementById('keyboard');
+    container.innerHTML = '';
+
+    const rows = [
+        ['A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M'],
+        ['Enter', 'W', 'X', 'C', 'V', 'B', 'N', 'Backspace']
+    ];
+
+    for (const row of rows) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'kb-row';
+
+        for (const key of row) {
+            const btn = document.createElement('button');
+            btn.className = 'kb-key';
+            if (key === 'Enter' || key === 'Backspace') {
+                btn.classList.add('special');
+                btn.textContent = key === 'Enter' ? 'Entrée' : 'Suppr';
+                btn.dataset.key = key;
+            } else {
+                btn.textContent = key;
+                btn.dataset.key = key;
+            }
+            btn.addEventListener('click', () => handleKeyClick(key));
+            rowDiv.appendChild(btn);
+        }
+        container.appendChild(rowDiv);
+    }
+}
+
+function handleKeyClick(key) {
+    if (gameState.gameOver) return;
+    if (key === 'Enter') {
+        submitCurrentWord();
+    } else if (key === 'Backspace') {
+        handleBackspace();
+    } else {
+        handleLetter(key);
     }
 }
 

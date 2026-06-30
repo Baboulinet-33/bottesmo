@@ -42,10 +42,13 @@ func isValidMode(mode game.GameMode) bool {
 type GameManager struct {
 	dailyWord string
 	dailyDate string
+	multi     *MultiplayerManager
 }
 
 func NewGameManager() *GameManager {
-	return &GameManager{}
+	return &GameManager{
+		multi: NewMultiplayerManager(),
+	}
 }
 
 func LoadTemplates(pattern string) error {
@@ -238,6 +241,10 @@ func (m *GameManager) GuessHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (m *GameManager) MultiplayerManager() *MultiplayerManager {
+	return m.multi
 }
 
 func CleanupSessions() {

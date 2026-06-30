@@ -248,6 +248,282 @@ main {
     color: #999;
 }
 
+/* Multiplayer styles */
+#multiplayer {
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.multi-screen {
+    width: 100%;
+}
+
+.multi-form {
+    background: #16213e;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    text-align: left;
+}
+
+.multi-form h3 {
+    margin-bottom: 1rem;
+    color: #e74c3c;
+}
+
+.multi-form label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.multi-form select,
+.multi-form input[type="text"],
+.multi-form input[type="number"] {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    background: #1a1a2e;
+    border: 1px solid #3a3a5c;
+    border-radius: 4px;
+    color: #eee;
+    font-size: 1rem;
+}
+
+.multi-form select option {
+    background: #1a1a2e;
+    color: #eee;
+}
+
+.multi-divider {
+    text-align: center;
+    color: #666;
+    margin: 0.5rem 0;
+    font-style: italic;
+}
+
+.multi-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    margin: 0.75rem 0;
+    font-size: 1.1rem;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+.multi-btn:hover {
+    background: #c0392b;
+}
+
+.multi-btn.small {
+    width: auto;
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.multi-btn.secondary {
+    background: #3a3a5c;
+    color: #eee;
+}
+
+.multi-btn.secondary:hover {
+    background: #4a4a6c;
+}
+
+.lobby-info {
+    background: #16213e;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.lobby-info p {
+    margin: 0.5rem 0;
+    color: #ccc;
+}
+
+.lobby-info strong {
+    color: #e74c3c;
+    font-size: 1.2rem;
+    letter-spacing: 0.2em;
+}
+
+.share-row {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+
+.share-row input {
+    flex: 1;
+    padding: 0.4rem;
+    background: #1a1a2e;
+    border: 1px solid #3a3a5c;
+    border-radius: 4px;
+    color: #eee;
+    font-size: 0.85rem;
+}
+
+.lobby-settings {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: #999;
+}
+
+#lobby-players {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+
+#lobby-players li {
+    padding: 0.4rem 0.75rem;
+    background: #16213e;
+    border-radius: 4px;
+    margin-bottom: 0.3rem;
+    font-size: 0.95rem;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0;
+    font-size: 1rem;
+    color: #ccc;
+}
+
+#game-word-indicator {
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+#game-timer {
+    font-variant-numeric: tabular-nums;
+}
+
+#multi-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 1rem 0;
+}
+
+#multi-input-area {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+#multi-submit-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#multi-submit-btn:hover {
+    background: #c0392b;
+}
+
+#multi-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#multi-message {
+    min-height: 2rem;
+    text-align: center;
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+#multi-message.win {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+#multi-message.lose {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+#multi-message.error {
+    color: #f1c40f;
+}
+
+#multi-keyboard {
+    margin-top: 1rem;
+    width: 100%;
+    max-width: 500px;
+}
+
+.players-progress {
+    width: 100%;
+    margin-top: 1rem;
+    text-align: left;
+}
+
+.players-progress h3 {
+    font-size: 0.9rem;
+    color: #999;
+    margin-bottom: 0.5rem;
+}
+
+#progress-players {
+    list-style: none;
+    padding: 0;
+}
+
+#progress-players li {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    color: #ccc;
+    border-bottom: 1px solid #2a2a4c;
+}
+
+#rankings-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+#rankings-table th,
+#rankings-table td {
+    padding: 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid #3a3a5c;
+}
+
+#rankings-table th {
+    color: #999;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+#rankings-table td {
+    font-size: 0.95rem;
+}
+
 @media (max-width: 480px) {
     .tile {
         width: 42px;

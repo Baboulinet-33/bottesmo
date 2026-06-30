@@ -1,0 +1,97 @@
+{{define "multiplayer.html"}}
+<div id="multiplayer">
+    <!-- Screen: Create/Join -->
+    <div id="screen-create" class="multi-screen">
+        <h2>Mode Multijoueur</h2>
+        <div class="multi-form">
+            <h3>Créer une partie</h3>
+            <label>
+                Mode de jeu
+                <select id="create-mode">
+                    <option value="progressif">Progressif</option>
+                    <option value="aleatoire">Aléatoire</option>
+                </select>
+            </label>
+            <label>
+                Nombre de mots (1-10)
+                <input type="number" id="create-wordcount" min="1" max="10" value="5">
+            </label>
+            <label>
+                Votre pseudo
+                <input type="text" id="create-nickname" maxlength="20" placeholder="Pseudo">
+            </label>
+            <button id="create-btn" class="multi-btn">Créer la partie</button>
+        </div>
+        <div class="multi-divider">ou</div>
+        <div class="multi-form">
+            <h3>Rejoindre une partie</h3>
+            <label>
+                Code de la partie
+                <input type="text" id="join-code" maxlength="6" placeholder="XXXXXX" style="text-transform:uppercase">
+            </label>
+            <label>
+                Votre pseudo
+                <input type="text" id="join-nickname" maxlength="20" placeholder="Pseudo">
+            </label>
+            <button id="join-btn" class="multi-btn">Rejoindre</button>
+        </div>
+    </div>
+
+    <!-- Screen: Lobby -->
+    <div id="screen-lobby" class="multi-screen" style="display:none">
+        <h2>Salon d'attente</h2>
+        <div class="lobby-info">
+            <p>Code de la partie : <strong id="lobby-code"></strong></p>
+            <p>Partagez ce lien :</p>
+            <div class="share-row">
+                <input type="text" id="lobby-share-url" readonly>
+                <button id="copy-btn" class="multi-btn small">Copier</button>
+            </div>
+        </div>
+        <div class="lobby-settings">
+            <p>Mode : <span id="lobby-mode"></span></p>
+            <p>Mots : <span id="lobby-wordcount"></span></p>
+        </div>
+        <h3>Joueurs (<span id="lobby-playercount">0</span>)</h3>
+        <ul id="lobby-players"></ul>
+        <button id="start-game-btn" class="multi-btn" style="display:none">Lancer la partie</button>
+        <button id="leave-lobby-btn" class="multi-btn secondary">Quitter</button>
+    </div>
+
+    <!-- Screen: Game -->
+    <div id="screen-game" class="multi-screen" style="display:none">
+        <div class="game-header">
+            <span id="game-word-indicator">Mot 1/5</span>
+            <span id="game-timer">00:00</span>
+        </div>
+        <div id="multi-grid"></div>
+        <div id="multi-input-area">
+            <button id="multi-submit-btn">Valider</button>
+        </div>
+        <div id="multi-message"></div>
+        <div id="multi-keyboard"></div>
+        <div class="players-progress">
+            <h3>Joueurs</h3>
+            <ul id="progress-players"></ul>
+        </div>
+    </div>
+
+    <!-- Screen: Results -->
+    <div id="screen-results" class="multi-screen" style="display:none">
+        <h2>Résultats</h2>
+        <table id="rankings-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Joueur</th>
+                    <th>Temps</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody id="rankings-body"></tbody>
+        </table>
+        <button id="new-game-btn" class="multi-btn">Nouvelle partie</button>
+        <button id="leave-results-btn" class="multi-btn secondary">Quitter</button>
+    </div>
+</div>
+{{end}}

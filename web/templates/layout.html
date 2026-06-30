@@ -9,6 +9,9 @@
 <body>
     <header>
         <h1><a href="/">Tusmo</a></h1>
+        <nav>
+            <a href="/multiplayer">Multijoueur</a>
+        </nav>
     </header>
     <main>
         {{if eq .Page "home"}}
@@ -19,8 +22,13 @@
         </div>
         {{else if eq .Page "game"}}
         {{template "game.html" .}}
+        {{else if eq .Page "multiplayer"}}
+        {{template "multiplayer.html" .}}
         {{end}}
     </main>
     <script src="/static/app.js"></script>
+    {{if eq .Page "multiplayer"}}
+    <script src="/static/multiplayer.js"></script>
+    {{end}}
 </body>
 </html>

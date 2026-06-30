@@ -14,22 +14,16 @@ func NewGame(target string, mode GameMode) *Game {
 	}
 }
 
-func (g *Game) Guess(word string) ([]LetterResult, error) {
+func computeResults(target, word string) ([]LetterResult, error) {
 	word = strings.ToUpper(word)
-
-	if g.GameOver {
-		return nil, fmt.Errorf("game is over")
+	if len(word) != len(target) {
+		return nil, fmt.Errorf("word must be exactly %d letters", len(target))
+	}
+	if word[0] != target[0] {
+		return nil, fmt.Errorf("word must start with %c", target[0])
 	}
 
-	if len(word) != g.WordLength {
-		return nil, fmt.Errorf("word must be exactly %d letters", g.WordLength)
-	}
-
-	if word[0] != g.Target[0] {
-		return nil, fmt.Errorf("word must start with %c", g.Target[0])
-	}
-
-	targetRunes := []rune(g.Target)
+	targetRunes := []rune(target)
 	guessRunes := []rune(word)
 
 	remaining := make(map[rune]int)
@@ -37,9 +31,8 @@ func (g *Game) Guess(word string) ([]LetterResult, error) {
 		remaining[r]++
 	}
 
-	results := make([]LetterResult, g.WordLength)
-
-	for i := 0; i < g.WordLength; i++ {
+	results := make([]LetterResult, len(target))
+	for i := 0; i < len(target); i++ {
 		if guessRunes[i] == targetRunes[i] {
 			results[i] = LetterResult{Letter: guessRunes[i], Status: StatusCorrect}
 			remaining[guessRunes[i]]--
@@ -47,8 +40,7 @@ func (g *Game) Guess(word string) ([]LetterResult, error) {
 			results[i] = LetterResult{Letter: guessRunes[i], Status: StatusAbsent}
 		}
 	}
-
-	for i := 0; i < g.WordLength; i++ {
+	for i := 0; i < len(target); i++ {
 		if results[i].Status == StatusCorrect {
 			continue
 		}
@@ -56,6 +48,19 @@ func (g *Game) Guess(word string) ([]LetterResult, error) {
 			results[i].Status = StatusPresent
 			remaining[guessRunes[i]]--
 		}
+	}
+	return results, nil
+}
+
+func (g *Game) Guess(word string) ([]LetterResult, error) {
+	if g.GameOver {
+		return nil, fmt.Errorf("game is over")
+	}
+
+	word = strings.ToUpper(word)
+	results, err := computeResults(g.Target, word)
+	if err != nil {
+		return nil, err
 	}
 
 	g.Attempts = append(g.Attempts, word)

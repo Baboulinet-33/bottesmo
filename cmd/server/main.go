@@ -36,6 +36,7 @@ func main() {
 	mgr := handlers.NewGameManager()
 
 	go handlers.CleanupSessions()
+	go mgr.MultiplayerManager().CleanupRooms()
 
 	fs := http.FileServer(http.Dir(filepath.Join(wd, "web", "static")))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
@@ -44,6 +45,14 @@ func main() {
 	http.HandleFunc("/game", mgr.GamePageHandler)
 	http.HandleFunc("/api/game/new", mgr.NewGameHandler)
 	http.HandleFunc("/api/game/guess", mgr.GuessHandler)
+
+	http.HandleFunc("/multiplayer", mgr.MultiplayerPageHandler)
+	http.HandleFunc("/api/multiplayer/create", mgr.CreateRoomHandler)
+	http.HandleFunc("/api/multiplayer/join", mgr.JoinRoomHandler)
+	http.HandleFunc("/api/multiplayer/start", mgr.StartGameHandler)
+	http.HandleFunc("/api/multiplayer/guess", mgr.MultiGuessHandler)
+	http.HandleFunc("/api/multiplayer/events", mgr.SSEHandler)
+	http.HandleFunc("/api/multiplayer/leave", mgr.LeaveRoomHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

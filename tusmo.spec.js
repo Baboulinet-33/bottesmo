@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3106';
+const BASE = 'http://localhost:3111';
 
 /**
  * Helper: types the given word into the current row using physical keyboard.
@@ -214,5 +214,105 @@ test.describe('Tusmo E2E — Match UI to real Tusmo', () => {
     await expect(tile).toHaveClass(/locked/);
     const letter = await tile.textContent();
     expect(letter.length).toBe(1);
+  });
+});
+
+test.describe('Multiplayer API', () => {
+  let roomCode = '';
+  let creatorID = '';
+
+  test('1. Create room', async ({ request }) => {
+    const resp = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 3, nickname: 'Alice' }
+    });
+    expect(resp.ok()).toBe(true);
+    const data = await resp.json();
+    expect(data).toHaveProperty('roomCode');
+    expect(data).toHaveProperty('playerID');
+    expect(data.roomCode.length).toBe(6);
+    roomCode = data.roomCode;
+    creatorID = data.playerID;
+  });
+
+  test('2. Join room', async ({ request }) => {
+    expect(roomCode).toBeTruthy();
+    const resp = await request.post(`${BASE}/api/multiplayer/join`, {
+      data: { roomCode, nickname: 'Bob' }
+    });
+    expect(resp.ok()).toBe(true);
+    const data = await resp.json();
+    expect(data.state).toBe('lobby');
+    expect(data.players.length).toBe(2);
+  });
+
+  test('3. Start game', async ({ request }) => {
+    expect(roomCode).toBeTruthy();
+    expect(creatorID).toBeTruthy();
+    const resp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode, playerID: creatorID }
+    });
+    expect(resp.ok()).toBe(true);
+  });
+
+  test('4. Guess word', async ({ request }) => {
+    expect(roomCode).toBeTruthy();
+    expect(creatorID).toBeTruthy();
+
+    // Join to get current game state
+    const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
+      data: { roomCode, playerID: creatorID }
+    });
+    const joinData = await joinResp.json();
+    expect(joinData.state).toBe('playing');
+    expect(joinData.wordSequence.length).toBe(3);
+
+    // Get the first word target
+    const target = joinData.wordGames[0].target;
+
+    const resp = await request.post(`${BASE}/api/multiplayer/guess`, {
+      data: { roomCode, playerID: creatorID, word: target }
+    });
+    expect(resp.ok()).toBe(true);
+    const data = await resp.json();
+    expect(data.wordFinished).toBe(true);
+    expect(data.wordWon).toBe(true);
+    expect(data.playerFinished).toBe(false);
+  });
+
+  test('5. Invalid guess rejected', async ({ request }) => {
+    expect(roomCode).toBeTruthy();
+    expect(creatorID).toBeTruthy();
+
+    const resp = await request.post(`${BASE}/api/multiplayer/guess`, {
+      data: { roomCode, playerID: creatorID, word: 'XXXXXX' }
+    });
+    expect(resp.ok()).toBe(false);
+  });
+
+  test('6. Leave room', async ({ request }) => {
+    expect(roomCode).toBeTruthy();
+    expect(creatorID).toBeTruthy();
+
+    const resp = await request.post(`${BASE}/api/multiplayer/leave`, {
+      data: { roomCode, playerID: creatorID }
+    });
+    expect(resp.ok()).toBe(true);
+  });
+
+  test('7. Create room invalid params', async ({ request }) => {
+    const resp1 = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'invalid', wordCount: 3, nickname: 'Test' }
+    });
+    expect(resp1.ok()).toBe(false);
+
+    const resp2 = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 0, nickname: 'Test' }
+    });
+    expect(resp2.ok()).toBe(false);
+
+    const resp3 = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 3, nickname: '' }
+    });
+    expect(resp3.ok()).toBe(false);
   });
 });

@@ -2,7 +2,29 @@ let gameState = null;
 
 const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult":""}';
 
+// Theme management
+function getPreferredTheme() {
+    const saved = localStorage.getItem('tusmo-theme');
+    if (saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+
+function toggleTheme() {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('tusmo-theme', next);
+    applyTheme(next);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const theme = getPreferredTheme();
+    applyTheme(theme);
+    document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     const gameDiv = document.getElementById('game');
     if (gameDiv) {
         const mode = gameDiv.dataset.mode;
@@ -329,13 +351,12 @@ function renderKeyboard() {
         for (const key of row) {
             const btn = document.createElement('button');
             btn.className = 'kb-key';
+            btn.dataset.key = key;
             if (key === 'Enter' || key === 'Backspace') {
                 btn.classList.add('special');
                 btn.textContent = key === 'Enter' ? 'Entrée' : 'Suppr';
-                btn.dataset.key = key;
             } else {
                 btn.textContent = key;
-                btn.dataset.key = key;
             }
             btn.addEventListener('click', () => handleKeyClick(key));
             rowDiv.appendChild(btn);

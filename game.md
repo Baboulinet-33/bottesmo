@@ -36,8 +36,8 @@ Après chaque proposition, chaque lettre reçoit un statut :
 
 | Couleur | Signification                  | Classe CSS   | Contexte du jeu          |
 |---------|--------------------------------|--------------|--------------------------|
-| 🔴 Rouge  | Lettre **bonne** (bonne lettre, bonne position) | `.correct`   | La lettre est correcte et bien placée. |
-| 🟡 Jaune | Lettre **mal placée** (bonne lettre, mauvaise position) | `.present`   | La lettre est dans le mot mais pas à cette position. |
+| 🟩 Vert   | Lettre **bonne** (bonne lettre, bonne position) | `.correct`   | La lettre est correcte et bien placée. |
+| 🟠 Ambre | Lettre **mal placée** (bonne lettre, mauvaise position) | `.present`   | La lettre est dans le mot mais pas à cette position. |
 | ⚫ Grise  | Lettre **absente** (lettre pas dans le mot) | `.absent`    | La lettre n'apparaît pas dans le mot cible. |
 
 ### Gestion des lettres doubles
@@ -193,8 +193,11 @@ func RandomWord() (string, error)
 
 ### Thème et style
 
-- **Thème sombre** : fond `#1a1a2e` (bleu nuit), texte `#eee`.
-- **Couleur d'accentuation** : rouge `#e74c3c` (en-tête, boutons, tuiles correctes).
+- **Double thème** : sombre (défaut) et clair, basculable via un bouton dans l'en-tête.
+- **Bouton de thème** : intégré dans l'en-tête (flexbox `space-between`), il est stylisé sans fond ni bordure (`background: transparent; border: none`) avec un hover couleur accent (`var(--accent)`).
+- **Persistance** : le choix du thème est sauvegardé dans `localStorage` (clé `tusmo-theme`). À la première visite, le thème respecte la préférence système (`prefers-color-scheme`).
+- **Mécanisme** : les couleurs sont définies via des **CSS custom properties** (`var(--…)`) dans `:root` (thème sombre) et `[data-theme="light"]` (surcharges claires). Voir `web/static/style.css` pour la palette complète.
+- **Palette** : accent ambre `#de802b`, correct émeraude `#10b981`, présent ambre `#f59e0b`, absent gris `#6b7280`.
 - **Police** : système (Segoe UI, Roboto, sans-serif).
 - **Disposition** : centrée, largeur max 600px, flexbox.
 - **Responsive** : point de rupture à 480px (taille réduite des tuiles et du clavier).
@@ -203,7 +206,7 @@ func RandomWord() (string, error)
 
 - 6 rangées × N colonnes, espacement de 6px entre les tuiles.
 - Tuiles de 52×52px (desktop) / 42×42px (mobile).
-- Tuiles verrouillées : fond rouge avec bordure rouge foncé.
+- Tuiles verrouillées : fond vert émeraude (`--correct`) avec bordure verte foncée.
 - Curseur : bordure blanche clignotante (animation).
 - Animation de soumission : `flip` (rotationX 90° puis retour) avec décalage de 100ms entre chaque tuile.
 
@@ -220,9 +223,9 @@ func RandomWord() (string, error)
 
 ### Messages
 
-- Erreur (mot invalide, problème réseau) : jaune `#f1c40f`.
-- Victoire : vert `#2ecc71`.
-- Défaite : rouge `#e74c3c`.
+- Erreur (mot invalide, problème réseau) : ambre (`var(--error)`).
+- Victoire : vert émeraude (`var(--win)`).
+- Défaite : ambre (`var(--accent)`).
 
 ---
 
@@ -286,7 +289,7 @@ Affichage en pied de page : `Parties: 42 | Victoires: 35 | Séries: 12`
 6. Le joueur **tape une proposition** (clavier physique ou AZERTY virtuel).
 7. La proposition est envoyée au serveur via `POST /api/game/guess`.
 8. Le serveur valide le mot et retourne les **statuts** de chaque lettre.
-9. Les tuiles s'animent (flip) et se colorent (rouge/jaune/grise).
+9. Les tuiles s'animent (flip) et se colorent (vert/ambre/grise).
 10. Les touches du clavier virtuel se colorent.
 11. Les lettres correctes sont **verrouillées** dans la ligne suivante.
 12. Les étapes 6 à 11 se répètent jusqu'à victoire ou défaite.

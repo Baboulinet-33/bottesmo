@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3111';
+const BASE = 'http://localhost:3113';
 
 /**
  * Helper: types the given word into the current row using physical keyboard.
@@ -384,5 +384,90 @@ test.describe('Multiplayer API', () => {
       data: { mode: 'progressif', wordCount: 3, nickname: '' }
     });
     expect(resp3.ok()).toBe(false);
+  });
+});
+
+test.describe('Theme toggle', () => {
+  test('1. Theme toggle button exists on home page', async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await expect(page.locator('#theme-toggle')).toBeVisible();
+  });
+
+  test('2. Toggle switches theme and back', async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('#theme-toggle');
+
+    // Read current theme before toggle
+    const initialTheme = await page.locator('html').getAttribute('data-theme');
+    const nextTheme = initialTheme === 'light' ? 'dark' : 'light';
+
+    // Toggle
+    await page.locator('#theme-toggle').click();
+    if (nextTheme === 'light') {
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    } else {
+      await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'light');
+    }
+
+    // Toggle back
+    await page.locator('#theme-toggle').click();
+    if (initialTheme === 'light') {
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    } else {
+      await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'light');
+    }
+  });
+
+  test('3. Theme persists across page reload', async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('#theme-toggle');
+
+    // Toggle to get non-default theme
+    await page.locator('#theme-toggle').click();
+    // Read the theme we toggled to
+    const toggledTheme = await page.locator('html').getAttribute('data-theme');
+
+    // Reload
+    await page.reload();
+    await page.waitForSelector('#theme-toggle');
+
+    // Verify same theme is applied
+    const reloadedTheme = await page.locator('html').getAttribute('data-theme');
+    expect(reloadedTheme).toBe(toggledTheme);
+  });
+
+  test('4. Toggle exists and works on solo game page', async ({ page }) => {
+    await page.goto(`${BASE}/game?mode=solo`);
+    await page.waitForSelector('#theme-toggle');
+    await expect(page.locator('#theme-toggle')).toBeVisible();
+
+    // Toggle and verify theme changed
+    const initialTheme = await page.locator('html').getAttribute('data-theme');
+    await page.locator('#theme-toggle').click();
+    const newTheme = await page.locator('html').getAttribute('data-theme');
+    expect(newTheme).not.toBe(initialTheme);
+  });
+
+  test('5. Default theme respects OS preference (dark)', async ({ page }) => {
+    // Mock prefers-color-scheme: dark and clear localStorage
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: (query) => ({
+          matches: query === '(prefers-color-scheme: dark)',
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => {},
+        }),
+      });
+    });
+    await page.goto(`${BASE}/`);
+    // Without saved preference and prefers-color-scheme: dark, default should be dark (no data-theme or empty)
+    const theme = await page.locator('html').getAttribute('data-theme');
+    expect(theme === null || theme === '').toBe(true);
   });
 });

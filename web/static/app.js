@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const homeDiv = document.getElementById('home');
     if (homeDiv) {
         document.querySelectorAll('.mode-btn').forEach(btn => {
+            const mode = btn.dataset.mode;
+            if (!mode) return;
             btn.addEventListener('click', () => {
-                const mode = btn.dataset.mode;
                 window.location.href = '/game?mode=' + mode;
             });
         });

@@ -411,6 +411,9 @@ main {
 #game-word-indicator {
     font-weight: bold;
     color: #e74c3c;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 #game-timer {
@@ -495,10 +498,40 @@ main {
 }
 
 #progress-players li {
+    display: flex;
+    align-items: center;
     padding: 0.3rem 0.5rem;
     font-size: 0.85rem;
     color: #ccc;
     border-bottom: 1px solid #2a2a4c;
+}
+
+#progress-players li .player-progress-circles {
+    margin-left: auto;
+}
+
+.player-progress-circles {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.word-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.word-dot.pending  { background: #555; }
+.word-dot.current  { background: #3498db; }
+.word-dot.won      { background: #2ecc71; }
+.word-dot.lost     { background: #e74c3c; }
+
+#game-word-indicator .word-dot {
+    width: 12px;
+    height: 12px;
 }
 
 #rankings-table {

@@ -101,6 +101,73 @@ func TestRemovePlayer(t *testing.T) {
 	room.RemovePlayer("nonexistent")
 }
 
+func TestAddPlayerMidGame_GeneratesWordSequence(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 2, "creator1", "Alice")
+	room.StartGame()
+
+	err := room.AddPlayer("player2", "Bob")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if room.WordSequence == nil {
+		t.Fatal("expected room.WordSequence to be set")
+	}
+	if len(room.WordSequence) != 2 {
+		t.Errorf("expected 2 words in WordSequence, got %d", len(room.WordSequence))
+	}
+
+	player := room.Players["player2"]
+	if player == nil {
+		t.Fatal("expected player2 to be in Players")
+	}
+	if len(player.WordGames) != 2 {
+		t.Errorf("expected 2 games in WordGames, got %d", len(player.WordGames))
+	}
+	if player.CurrentWordIdx != 0 {
+		t.Errorf("expected CurrentWordIdx 0, got %d", player.CurrentWordIdx)
+	}
+	if player.StartTime.IsZero() {
+		t.Error("expected StartTime to be set")
+	}
+}
+
+func TestAddPlayerMidGame_MultipleWords(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 5, "creator1", "Alice")
+	room.StartGame()
+
+	err := room.AddPlayer("player2", "Bob")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(room.WordSequence) != 5 {
+		t.Errorf("expected 5 words in room.WordSequence, got %d", len(room.WordSequence))
+	}
+
+	player := room.Players["player2"]
+	if len(player.WordGames) != 5 {
+		t.Errorf("expected 5 games, got %d", len(player.WordGames))
+	}
+	for i, g := range player.WordGames {
+		if g == nil {
+			t.Errorf("WordGames[%d] is nil", i)
+		} else if g.Target != room.WordSequence[i] {
+			t.Errorf("WordGames[%d].Target = %q, expected %q", i, g.Target, room.WordSequence[i])
+		}
+	}
+}
+
+func TestStartGame_NoPlayers_ReturnsError(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 3, "creator1", "Alice")
+	room.RemovePlayer("creator1")
+
+	err := room.StartGame()
+	if err == nil {
+		t.Error("expected error when starting game with no players")
+	}
+}
+
 func TestStartGame(t *testing.T) {
 	room := NewMultiplayerRoom("ABC123", "progressif", 3, "creator1", "Alice")
 	room.AddPlayer("player2", "Bob")
@@ -116,13 +183,18 @@ func TestStartGame(t *testing.T) {
 	if room.StartTime.IsZero() {
 		t.Error("expected StartTime to be set")
 	}
+	if len(room.WordSequence) != 3 {
+		t.Errorf("expected 3 words in room.WordSequence, got %d", len(room.WordSequence))
+	}
 
 	for id, player := range room.Players {
-		if len(player.WordSequence) != 3 {
-			t.Errorf("player %s expected 3 words, got %d", id, len(player.WordSequence))
-		}
 		if len(player.WordGames) != 3 {
 			t.Errorf("player %s expected 3 games, got %d", id, len(player.WordGames))
+		}
+		for i, g := range player.WordGames {
+			if g.Target != room.WordSequence[i] {
+				t.Errorf("player %s WordGames[%d].Target = %q, expected %q", id, i, g.Target, room.WordSequence[i])
+			}
 		}
 		if player.CurrentWordIdx != 0 {
 			t.Errorf("player %s expected CurrentWordIdx 0, got %d", id, player.CurrentWordIdx)
@@ -329,8 +401,8 @@ func TestMidGameJoin_StateRestore(t *testing.T) {
 	if player.CurrentWordIdx != 1 {
 		t.Errorf("expected CurrentWordIdx 1, got %d", player.CurrentWordIdx)
 	}
-	if len(player.WordSequence) != 2 {
-		t.Errorf("expected 2 words, got %d", len(player.WordSequence))
+	if len(room.WordSequence) != 2 {
+		t.Errorf("expected 2 words, got %d", len(room.WordSequence))
 	}
 	if !player.WordGames[0].GameOver {
 		t.Errorf("expected first word game to be over")

@@ -114,6 +114,43 @@ func (mm *MultiplayerManager) CleanupRooms() {
 	}
 }
 
+func (mm *MultiplayerManager) removePlayerFromRoom(roomCode, playerID string) {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+
+	room, ok := mm.rooms[roomCode]
+	if !ok {
+		return
+	}
+	if _, exists := room.Players[playerID]; !exists {
+		return
+	}
+
+	room.RemovePlayer(playerID)
+
+	if room.CreatorID == playerID && len(room.Players) > 0 {
+		for id := range room.Players {
+			room.CreatorID = id
+			break
+		}
+	}
+
+	if len(room.Players) == 0 {
+		delete(mm.rooms, roomCode)
+		return
+	}
+
+	players := playersInfo(room)
+	mm.hub.Broadcast(roomCode, SSEEvent{
+		Event: "player-left",
+		Data: map[string]any{
+			"playerID":     playerID,
+			"players":      players,
+			"newCreatorID": room.CreatorID,
+		},
+	})
+}
+
 func playersInfo(room *game.MultiplayerRoom) []playerInfo {
 	var list []playerInfo
 	for _, p := range room.Players {
@@ -276,7 +313,7 @@ func (m *GameManager) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	if room.State == "playing" {
 		player := room.Players[playerID]
-		resp.WordSequence = player.WordSequence
+		resp.WordSequence = room.WordSequence
 		resp.CurrentWordIdx = player.CurrentWordIdx
 		resp.StartTime = room.StartTime.Format(time.RFC3339Nano)
 
@@ -377,6 +414,7 @@ type multiGuessResponse struct {
 	PlayerFailed   bool                `json:"playerFailed"`
 	CurrentWordIdx int                 `json:"currentWordIdx"`
 	TotalWords     int                 `json:"totalWords"`
+	Rankings       []game.RankingEntry `json:"rankings,omitempty"`
 }
 
 func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) {
@@ -436,6 +474,7 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 
 	if resp.PlayerFinished {
 		rankings := room.GetRankings()
+		resp.Rankings = rankings
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "player-finished",
 			Data: map[string]any{
@@ -465,6 +504,21 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mm := m.multi
+	mm.mu.RLock()
+	room, ok := mm.rooms[roomCode]
+	if !ok {
+		mm.mu.RUnlock()
+		http.Error(w, "room not found", http.StatusNotFound)
+		return
+	}
+	if _, exists := room.Players[playerID]; !exists {
+		mm.mu.RUnlock()
+		http.Error(w, "not a player in this room", http.StatusForbidden)
+		return
+	}
+	mm.mu.RUnlock()
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
@@ -475,7 +529,8 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	mm := m.multi
+	http.NewResponseController(w).SetWriteDeadline(time.Time{})
+
 	ch := mm.hub.Subscribe(roomCode, playerID)
 	defer mm.hub.Unsubscribe(roomCode, playerID)
 
@@ -483,6 +538,7 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			mm.removePlayerFromRoom(roomCode, playerID)
 			return
 		case event, ok := <-ch:
 			if !ok {
@@ -519,31 +575,6 @@ func (m *GameManager) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mm := m.multi
-	mm.mu.Lock()
-	room, ok := mm.rooms[req.RoomCode]
-	if !ok {
-		mm.mu.Unlock()
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "room not found"})
-		return
-	}
-
-	room.RemovePlayer(req.PlayerID)
-	isCreator := room.CreatorID == req.PlayerID
-	players := playersInfo(room)
-
-	if len(room.Players) == 0 || isCreator {
-		delete(mm.rooms, req.RoomCode)
-		mm.mu.Unlock()
-		writeJSON(w, http.StatusOK, map[string]any{"success": true})
-		return
-	}
-
-	mm.mu.Unlock()
-
-	mm.hub.Broadcast(room.Code, SSEEvent{
-		Event: "player-left",
-		Data:  map[string]any{"playerID": req.PlayerID, "players": players},
-	})
-
+	mm.removePlayerFromRoom(req.RoomCode, req.PlayerID)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }

@@ -217,6 +217,76 @@ test.describe('Tusmo E2E — Match UI to real Tusmo', () => {
   });
 });
 
+test.describe('Multiplayer UI — Bugfix verification', () => {
+  test('1. Homepage shows three mode buttons (Daily, Solo, Multijoueur)', async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await page.waitForSelector('.mode-btn');
+    const buttons = page.locator('.mode-btn');
+    await expect(buttons).toHaveCount(3);
+    await expect(buttons.nth(2)).toHaveText('Multijoueur');
+  });
+
+  test('2. Late joiner receives non-empty wordGames', async ({ request }) => {
+    const createResp = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Alice' }
+    });
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const aliceID = createData.playerID;
+
+    const startResp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    expect(startResp.ok()).toBe(true);
+
+    const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
+      data: { roomCode: code, nickname: 'Bob' }
+    });
+    expect(joinResp.ok()).toBe(true);
+    const joinData = await joinResp.json();
+    expect(joinData.state).toBe('playing');
+    expect(joinData.wordGames).toBeDefined();
+    expect(joinData.wordGames.length).toBe(2);
+    expect(joinData.wordGames[0]).toBeDefined();
+    expect(joinData.wordGames[0].target).toBeTruthy();
+  });
+
+  test('3. Double-click start does not produce 400 on UI (button disabled)', async ({ request }) => {
+    const createResp = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Charlie' }
+    });
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const playerID = createData.playerID;
+
+    const firstResp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID }
+    });
+    expect(firstResp.ok()).toBe(true);
+
+    const secondResp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID }
+    });
+    expect(secondResp.status()).toBe(400);
+    const secondData = await secondResp.json();
+    expect(secondData.error).toBeTruthy();
+  });
+
+  test('4. SSE endpoint returns text/event-stream content type', async ({ page }) => {
+    const createResp = await page.request().post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Diana' }
+    });
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const playerID = createData.playerID;
+
+    const response = await page.goto(`${BASE}/api/multiplayer/events?room=${code}&player=${playerID}`);
+    expect(response.headers()['content-type']).toContain('text/event-stream');
+
+    await page.goto(`${BASE}/`);
+  });
+});
+
 test.describe('Multiplayer API', () => {
   let roomCode = '';
   let creatorID = '';

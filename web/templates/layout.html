@@ -9,9 +9,7 @@
 <body>
     <header>
         <h1><a href="/">Tusmo</a></h1>
-        <nav>
-            <a href="/multiplayer">Multijoueur</a>
-        </nav>
+
     </header>
     <main>
         {{if eq .Page "home"}}
@@ -19,6 +17,7 @@
             <h2>Choisissez un mode de jeu</h2>
             <button class="mode-btn" data-mode="daily">Mot du jour</button>
             <button class="mode-btn" data-mode="solo">Solo</button>
+            <button class="mode-btn" onclick="window.location.href='/multiplayer'">Multijoueur</button>
         </div>
         {{else if eq .Page "game"}}
         {{template "game.html" .}}

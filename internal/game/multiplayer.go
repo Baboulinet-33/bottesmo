@@ -10,23 +10,23 @@ import (
 )
 
 type MultiplayerRoom struct {
-	Code       string
-	Mode       string
-	WordCount  int
-	CreatorID  string
-	Players    map[string]*MultiplayerPlayer
-	Started    bool
-	StartTime  time.Time
-	Finished   bool
-	State      string
-	CreatedAt  time.Time
-	MaxPlayers int
+	Code         string
+	Mode         string
+	WordCount    int
+	CreatorID    string
+	Players      map[string]*MultiplayerPlayer
+	Started      bool
+	StartTime    time.Time
+	Finished     bool
+	State        string
+	CreatedAt    time.Time
+	MaxPlayers   int
+	WordSequence []string
 }
 
 type MultiplayerPlayer struct {
 	ID             string
 	Nickname       string
-	WordSequence   []string
 	WordGames      []*Game
 	CurrentWordIdx int
 	StartTime      time.Time
@@ -37,11 +37,11 @@ type MultiplayerPlayer struct {
 }
 
 type RankingEntry struct {
-	PlayerID string
-	Nickname string
-	Time     time.Duration
-	Failed   bool
-	Finished bool
+	PlayerID string        `json:"playerID"`
+	Nickname string        `json:"nickname"`
+	Time     time.Duration `json:"time"`
+	Failed   bool          `json:"failed"`
+	Finished bool          `json:"finished"`
 }
 
 type MultiplayerGuessResult struct {
@@ -78,18 +78,13 @@ func GenerateWordSequence(mode string, count int) []string {
 		}
 
 		word, err := dictionary.RandomWord(l)
+		for attempt := 0; err != nil && attempt < 10; attempt++ {
+			l = 6 + rand.Intn(5)
+			word, err = dictionary.RandomWord(l)
+		}
 		if err != nil {
-			for attempt := 0; attempt < 10; attempt++ {
-				l = 6 + rand.Intn(5)
-				word, err = dictionary.RandomWord(l)
-				if err == nil {
-					break
-				}
-			}
-			if err != nil {
-				sequence[i] = "AAAAAA"
-				continue
-			}
+			sequence[i] = "AAAAAA"
+			continue
 		}
 		sequence[i] = word
 	}
@@ -132,6 +127,16 @@ func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 		Nickname: nickname,
 		JoinedAt: time.Now(),
 	}
+
+	if r.State == "playing" {
+		player.WordGames = make([]*Game, r.WordCount)
+		for i, word := range r.WordSequence {
+			player.WordGames[i] = NewGame(word, ModeSolo)
+		}
+		player.CurrentWordIdx = 0
+		player.StartTime = time.Now()
+	}
+
 	r.Players[id] = player
 	return nil
 }
@@ -145,12 +150,12 @@ func (r *MultiplayerRoom) StartGame() error {
 	}
 
 	r.State = "playing"
+	r.WordSequence = GenerateWordSequence(r.Mode, r.WordCount)
 	r.StartTime = time.Now()
 
 	for _, player := range r.Players {
-		player.WordSequence = GenerateWordSequence(r.Mode, r.WordCount)
 		player.WordGames = make([]*Game, r.WordCount)
-		for i, word := range player.WordSequence {
+		for i, word := range r.WordSequence {
 			player.WordGames[i] = NewGame(word, ModeSolo)
 		}
 		player.CurrentWordIdx = 0
@@ -189,15 +194,16 @@ func (r *MultiplayerRoom) ProcessGuess(playerID, guess string) (*MultiplayerGues
 
 			if player.CurrentWordIdx >= r.WordCount {
 				player.Finished = true
-				player.CompletedTime = time.Now()
 				result.PlayerFinished = true
 			}
 		} else {
 			player.Failed = true
 			player.Finished = true
-			player.CompletedTime = time.Now()
-			result.PlayerFinished = true
 			result.PlayerFailed = true
+			result.PlayerFinished = true
+		}
+		if result.PlayerFinished {
+			player.CompletedTime = time.Now()
 		}
 	}
 

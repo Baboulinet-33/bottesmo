@@ -1,28 +1,16 @@
-let mp = {
-    playerID: null,
-    roomCode: null,
-    mode: null,
-    wordCount: null,
-    state: null,
-    creatorID: null,
-    players: [],
-    wordSequence: [],
-    wordGames: [],
-    currentWordIdx: 0,
-    currentRow: 0,
-    currentCol: 0,
-    foundLetters: [],
-    lockedPositions: new Set(),
-    letterStatuses: {},
-    attempts: [],
-    won: false,
-    gameOver: false,
-    wordLength: 0,
-    firstLetter: '',
-    maxTries: 6,
-    guessResults: [],
-    eventSource: null,
-};
+const STATUS_CLASSES = ['correct', 'present', 'absent'];
+let mp = newMp();
+
+function newMp() {
+    return {
+        playerID: null, roomCode: null, mode: null, wordCount: null,
+        state: null, creatorID: null, players: [], wordSequence: [],
+        wordGames: [], currentWordIdx: 0, currentRow: 0, currentCol: 0,
+        foundLetters: [], lockedPositions: new Set(), letterStatuses: {},
+        attempts: [], won: false, gameOver: false, wordLength: 0,
+        firstLetter: '', maxTries: 6, guessResults: [], eventSource: null,
+    };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const multiDiv = document.getElementById('multiplayer');
@@ -31,12 +19,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get('join');
 
+    const savedNick = localStorage.getItem('tusmo-multi-nickname');
+    if (savedNick) {
+        document.getElementById('create-nickname').value = savedNick;
+        document.getElementById('join-nickname').value = savedNick;
+    }
+
     if (joinCode) {
         document.getElementById('join-code').value = joinCode;
+        document.querySelector('#screen-create .multi-form:first-of-type').style.display = 'none';
+        document.querySelector('#screen-create .multi-divider').style.display = 'none';
     }
 
     setupCreateForm();
     setupJoinForm();
+
+    window.addEventListener('beforeunload', () => {
+        if (mp.roomCode && mp.playerID) {
+            const blob = new Blob([JSON.stringify({
+                roomCode: mp.roomCode,
+                playerID: mp.playerID
+            })], { type: 'application/json' });
+            navigator.sendBeacon('/api/multiplayer/leave', blob);
+        }
+    });
 });
 
 function showScreen(screen) {
@@ -75,6 +81,8 @@ function createRoom() {
         return;
     }
 
+    localStorage.setItem('tusmo-multi-nickname', nickname);
+
     fetch('/api/multiplayer/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,6 +111,7 @@ function createRoom() {
 }
 
 function joinRoom(code, nickname) {
+    localStorage.setItem('tusmo-multi-nickname', nickname);
     const savedID = localStorage.getItem('tusmo-multi-playerid');
 
     fetch('/api/multiplayer/join', {
@@ -193,6 +202,9 @@ function loadCurrentWord() {
 }
 
 function startGame() {
+    const btn = document.getElementById('start-game-btn');
+    btn.disabled = true;
+
     fetch('/api/multiplayer/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,9 +212,19 @@ function startGame() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.error) { alert(data.error); }
+        if (data.error) {
+            alert(data.error);
+            btn.disabled = false;
+            return;
+        }
+        if (data.success) {
+            loadGame();
+        }
     })
-    .catch(err => alert('Erreur de connexion'));
+    .catch(err => {
+        alert('Erreur de connexion');
+        btn.disabled = false;
+    });
 }
 
 function setupSSE(roomCode, playerID) {
@@ -225,6 +247,12 @@ function setupSSE(roomCode, playerID) {
     mp.eventSource.addEventListener('player-left', (e) => {
         const data = JSON.parse(e.data);
         mp.players = data.players;
+        if (data.newCreatorID) {
+            mp.creatorID = data.newCreatorID;
+            if (mp.creatorID === mp.playerID) {
+                document.getElementById('start-game-btn').style.display = 'block';
+            }
+        }
         if (document.getElementById('screen-lobby').style.display !== 'none') {
             updateLobbyPlayers();
         }
@@ -248,6 +276,9 @@ function setupSSE(roomCode, playerID) {
     mp.eventSource.addEventListener('player-finished', (e) => {
         const data = JSON.parse(e.data);
         renderRankings(data.rankings);
+        if (data.playerID === mp.playerID) {
+            showScreen('results');
+        }
     });
 
     mp.eventSource.addEventListener('game-over', (e) => {
@@ -277,7 +308,9 @@ function loadGame() {
         mp.wordSequence = data.wordSequence || [];
         mp.currentWordIdx = data.currentWordIdx || 0;
         mp.wordGames = data.wordGames || [];
+        mp.players = data.players || [];
         loadCurrentWord();
+        updateProgressPlayers();
     });
 }
 
@@ -286,10 +319,30 @@ function updateLobbyPlayers() {
     list.innerHTML = '';
     mp.players.forEach(p => {
         const li = document.createElement('li');
-        li.textContent = p.nickname + (p.id === mp.creatorID ? ' (Créateur)' : '');
+        li.textContent = (p.id === mp.creatorID ? '👑 ' : '') + p.nickname;
         list.appendChild(li);
     });
     document.getElementById('lobby-playercount').textContent = mp.players.length;
+}
+
+function wordStatus(player, wordIdx) {
+    if (wordIdx < player.currentWordIdx) return 'won';
+    if (wordIdx === player.currentWordIdx) {
+        if (player.finished && player.failed) return 'lost';
+        return 'current';
+    }
+    return 'pending';
+}
+
+function progressCircles(player) {
+    const container = document.createElement('span');
+    container.className = 'player-progress-circles';
+    for (let i = 0; i < player.totalWords; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'word-dot ' + wordStatus(player, i);
+        container.appendChild(dot);
+    }
+    return container;
 }
 
 function updateProgressPlayers() {
@@ -298,16 +351,23 @@ function updateProgressPlayers() {
     list.innerHTML = '';
     mp.players.forEach(p => {
         const li = document.createElement('li');
-        const status = p.finished ? (p.failed ? 'Échoué' : 'Terminé') : 'Mot ' + (p.currentWordIdx + 1) + '/' + p.totalWords;
-        li.textContent = p.nickname + ' — ' + status;
+        const creatorIcon = document.createTextNode(p.id === mp.creatorID ? '👑 ' : '');
+        li.appendChild(creatorIcon);
+        li.appendChild(document.createTextNode(p.nickname + ' '));
+        li.appendChild(progressCircles(p));
         list.appendChild(li);
     });
 }
 
 function updateWordIndicator() {
     const el = document.getElementById('game-word-indicator');
-    if (el) {
-        el.textContent = 'Mot ' + (mp.currentWordIdx + 1) + '/' + mp.wordCount;
+    if (!el) return;
+    el.textContent = '';
+    const me = mp.players.find(p => p.id === mp.playerID) || { currentWordIdx: mp.currentWordIdx, totalWords: mp.wordCount, finished: false, failed: false };
+    for (let i = 0; i < me.totalWords; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'word-dot ' + wordStatus(me, i);
+        el.appendChild(dot);
     }
 }
 
@@ -340,14 +400,7 @@ function leaveRoom() {
     if (mp.eventSource) {
         mp.eventSource.close();
     }
-    mp = {
-        playerID: null, roomCode: null, mode: null, wordCount: null,
-        state: null, creatorID: null, players: [], wordSequence: [],
-        wordGames: [], currentWordIdx: 0, currentRow: 0, currentCol: 0,
-        foundLetters: [], lockedPositions: new Set(), letterStatuses: {},
-        attempts: [], won: false, gameOver: false, wordLength: 0,
-        firstLetter: '', maxTries: 6, guessResults: [], eventSource: null,
-    };
+    mp = newMp();
     document.getElementById('join-code').value = '';
     document.getElementById('join-nickname').value = '';
     showScreen('create');
@@ -440,6 +493,17 @@ function addCursor() {
 
 function removeCursor() {
     document.querySelectorAll('.tile.cursor').forEach(t => t.classList.remove('cursor'));
+}
+
+function handleKeyClick(key) {
+    if (mp.gameOver) return;
+    if (key === 'Enter') {
+        submitCurrentWord();
+    } else if (key === 'Backspace') {
+        handleBackspace();
+    } else {
+        handleLetter(key);
+    }
 }
 
 document.addEventListener('keydown', (e) => {
@@ -558,6 +622,10 @@ function submitGuess(word) {
                 }
                 btn.disabled = true;
                 mp.gameOver = true;
+                if (data.rankings) {
+                    renderRankings(data.rankings);
+                    showScreen('results');
+                }
             } else {
                 showMultiMessage(data.wordWon ? 'Mot trouvé !' : 'Mot échoué', data.wordWon ? 'win' : 'lose');
                 setTimeout(() => {
@@ -656,8 +724,7 @@ function updateGridRow(row, results) {
         const r = results[col];
         tile.textContent = String.fromCharCode(r.Letter);
 
-        const statusClasses = ['correct', 'present', 'absent'];
-        const statusClass = statusClasses[r.Status] || 'absent';
+        const statusClass = STATUS_CLASSES[r.Status] || 'absent';
 
         setTimeout(() => {
             tile.classList.add('submitted', statusClass);
@@ -674,13 +741,12 @@ function updateKeyboard(results) {
         }
     }
 
-    const statusClasses = ['correct', 'present', 'absent'];
     document.querySelectorAll('#multi-keyboard .kb-key').forEach(key => {
         const letter = key.dataset.key;
         const status = mp.letterStatuses[letter];
         key.classList.remove('correct', 'present', 'absent');
         if (status !== undefined) {
-            key.classList.add(statusClasses[status]);
+            key.classList.add(STATUS_CLASSES[status]);
         }
     });
 }
@@ -705,16 +771,11 @@ function renderKeyboard() {
             if (key === 'Enter' || key === 'Backspace') {
                 btn.classList.add('special');
                 btn.textContent = key === 'Enter' ? 'Entrée' : 'Suppr';
-                btn.dataset.key = key;
-                btn.addEventListener('click', () => {
-                    if (key === 'Enter') submitCurrentWord();
-                    else if (key === 'Backspace') handleBackspace();
-                });
             } else {
                 btn.textContent = key;
-                btn.dataset.key = key;
-                btn.addEventListener('click', () => handleLetter(key));
             }
+            btn.dataset.key = key;
+            btn.addEventListener('click', () => handleKeyClick(key));
             rowDiv.appendChild(btn);
         }
         container.appendChild(rowDiv);

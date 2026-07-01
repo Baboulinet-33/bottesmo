@@ -468,6 +468,52 @@ function renderRankings(rankings) {
         tr.appendChild(status);
         tbody.appendChild(tr);
     });
+
+    const tabsContainer = document.getElementById('player-tabs');
+    const resultsContainer = document.getElementById('player-word-results');
+    tabsContainer.innerHTML = '';
+    resultsContainer.innerHTML = '';
+
+    const playersWithResults = rankings.filter(r => r.wordResults && r.wordResults.length > 0);
+    if (playersWithResults.length === 0) return;
+
+    playersWithResults.forEach((r, idx) => {
+        const tab = document.createElement('button');
+        tab.className = 'player-tab' + (idx === 0 ? ' active' : '');
+        tab.textContent = r.nickname;
+        tab.addEventListener('click', () => {
+            tabsContainer.querySelectorAll('.player-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderPlayerWords(r.wordResults, resultsContainer);
+        });
+        tabsContainer.appendChild(tab);
+    });
+
+    renderPlayerWords(playersWithResults[0].wordResults, resultsContainer);
+}
+
+function renderPlayerWords(wordResults, container) {
+    container.innerHTML = '';
+    wordResults.forEach((wr, wi) => {
+        const card = document.createElement('div');
+        card.className = 'word-result';
+        const label = document.createElement('div');
+        label.className = 'word-result-label';
+        label.textContent = 'Mot ' + (wi + 1) + ' : ' + wr.target;
+        card.appendChild(label);
+        wr.results.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'mini-row';
+            row.forEach(r => {
+                const tile = document.createElement('span');
+                tile.className = 'mini-tile ' + (STATUS_CLASSES[r.Status] || 'absent');
+                tile.textContent = String.fromCharCode(r.Letter);
+                rowDiv.appendChild(tile);
+            });
+            card.appendChild(rowDiv);
+        });
+        container.appendChild(card);
+    });
 }
 
 // Grid and keyboard (adapted from solo)
@@ -644,7 +690,8 @@ function submitGuess(word) {
                     showScreen('results');
                 }
             } else {
-                showMultiMessage(data.wordWon ? 'Mot trouvé !' : 'Mot échoué', data.wordWon ? 'win' : 'lose');
+                const isWon = data.wordWon;
+                showMultiMessage(isWon ? 'Mot trouvé !' : 'Mot échoué', isWon ? 'win' : 'lose');
                 setTimeout(() => {
                     mp.currentWordIdx = data.currentWordIdx;
                     loadNextWord();
@@ -664,13 +711,7 @@ function submitGuess(word) {
 }
 
 function loadNextWord() {
-    fetchGameState().then(data => {
-        if (data.error) { return; }
-        mp.wordGames = data.wordGames || [];
-        mp.currentWordIdx = data.currentWordIdx;
-        mp.wordSequence = data.wordSequence || [];
-        loadCurrentWord();
-    });
+    loadGame();
 }
 
 function enableInput() {

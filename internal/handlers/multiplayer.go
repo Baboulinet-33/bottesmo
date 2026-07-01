@@ -485,11 +485,17 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 
 	if resp.PlayerFinished {
 		resp.Rankings = rankings
+
+		strippedRankings := make([]game.RankingEntry, len(rankings))
+		for i := range rankings {
+			strippedRankings[i] = rankings[i]
+			strippedRankings[i].WordResults = nil
+		}
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "player-finished",
 			Data: map[string]any{
 				"playerID": req.PlayerID,
-				"rankings": rankings,
+				"rankings": strippedRankings,
 			},
 		})
 	}

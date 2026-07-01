@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3113';
+const BASE = 'http://localhost:3115';
 
 /**
  * Helper: types the given word into the current row using physical keyboard.
@@ -384,6 +384,54 @@ test.describe('Multiplayer API', () => {
       data: { mode: 'progressif', wordCount: 3, nickname: '' }
     });
     expect(resp3.ok()).toBe(false);
+  });
+
+  test('8. Finished player has wordResults in rankings', async ({ request }) => {
+    const createResp = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Alice' }
+    });
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const aliceID = createData.playerID;
+
+    const startResp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    expect(startResp.ok()).toBe(true);
+
+    const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    const joinData = await joinResp.json();
+    expect(joinData.wordGames.length).toBe(2);
+
+    let lastResponse = null;
+    for (let i = 0; i < 2; i++) {
+      const target = joinData.wordGames[i].target;
+      const guessResp = await request.post(`${BASE}/api/multiplayer/guess`, {
+        data: { roomCode: code, playerID: aliceID, word: target }
+      });
+      expect(guessResp.ok()).toBe(true);
+      lastResponse = await guessResp.json();
+    }
+
+    expect(lastResponse.playerFinished).toBe(true);
+    expect(lastResponse.rankings).toBeDefined();
+    expect(Array.isArray(lastResponse.rankings)).toBe(true);
+
+    const aliceRanking = lastResponse.rankings.find(r => r.playerID === aliceID);
+    expect(aliceRanking).toBeDefined();
+    expect(aliceRanking.wordResults).toBeDefined();
+    expect(aliceRanking.wordResults.length).toBe(2);
+
+    for (const wr of aliceRanking.wordResults) {
+      expect(wr).toHaveProperty('target');
+      expect(wr).toHaveProperty('attempts');
+      expect(wr).toHaveProperty('results');
+      expect(typeof wr.target).toBe('string');
+      expect(Array.isArray(wr.attempts)).toBe(true);
+      expect(Array.isArray(wr.results)).toBe(true);
+    }
   });
 });
 

@@ -1,0 +1,12 @@
+.bottega/
+.git/
+.gitignore
+*.spec.js
+README.md
+game.md
+log/
+node_modules/
+package.json
+playwright.config.js
+storage/
+tmp/

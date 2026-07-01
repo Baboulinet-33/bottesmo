@@ -137,7 +137,6 @@ func (p *MultiplayerPlayer) reset() {
 	p.Finished = false
 }
 
-
 func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 	if len(r.Players) >= r.MaxPlayers {
 		return fmt.Errorf("room is full")

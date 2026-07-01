@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3113';
+const BASE = 'http://localhost:3115';
 
 /**
  * Helper: types the given word into the current row using physical keyboard.

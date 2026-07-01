@@ -442,7 +442,58 @@ function updateNewGameBtn() {
     newGameBtn.style.display = (mp.creatorID === mp.playerID) ? 'block' : 'none';
 }
 
-function renderWordResults(wordResults, container) {
+function renderRankings(rankings) {
+    const tbody = document.getElementById('rankings-body');
+    tbody.innerHTML = '';
+    rankings.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        const pos = document.createElement('td');
+        pos.textContent = idx + 1;
+        const name = document.createElement('td');
+        name.textContent = r.nickname;
+        const time = document.createElement('td');
+        if (r.finished) {
+            const totalSec = Math.floor(r.time / 1e9);
+            const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+            const s = String(totalSec % 60).padStart(2, '0');
+            time.textContent = m + ':' + s;
+        } else {
+            time.textContent = '—';
+        }
+        const status = document.createElement('td');
+        status.textContent = r.failed ? 'Échoué' : (r.finished ? 'Terminé' : 'En cours');
+        tr.appendChild(pos);
+        tr.appendChild(name);
+        tr.appendChild(time);
+        tr.appendChild(status);
+        tbody.appendChild(tr);
+    });
+
+    const tabsContainer = document.getElementById('player-tabs');
+    const resultsContainer = document.getElementById('player-word-results');
+    tabsContainer.innerHTML = '';
+    resultsContainer.innerHTML = '';
+
+    const playersWithResults = rankings.filter(r => r.wordResults && r.wordResults.length > 0);
+    if (playersWithResults.length === 0) return;
+
+    playersWithResults.forEach((r, idx) => {
+        const tab = document.createElement('button');
+        tab.className = 'player-tab' + (idx === 0 ? ' active' : '');
+        tab.textContent = r.nickname;
+        tab.addEventListener('click', () => {
+            tabsContainer.querySelectorAll('.player-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderPlayerWords(r.wordResults, resultsContainer);
+        });
+        tabsContainer.appendChild(tab);
+    });
+
+    renderPlayerWords(playersWithResults[0].wordResults, resultsContainer);
+}
+
+function renderPlayerWords(wordResults, container) {
+    container.innerHTML = '';
     wordResults.forEach((wr, wi) => {
         const card = document.createElement('div');
         card.className = 'word-result';
@@ -462,53 +513,6 @@ function renderWordResults(wordResults, container) {
             card.appendChild(rowDiv);
         });
         container.appendChild(card);
-    });
-}
-
-function renderRankings(rankings) {
-    const tbody = document.getElementById('rankings-body');
-    tbody.innerHTML = '';
-    rankings.forEach((r, idx) => {
-        const tr = document.createElement('tr');
-        const pos = document.createElement('td');
-        pos.textContent = idx + 1;
-        const name = document.createElement('td');
-        name.textContent = r.nickname;
-        name.style.cursor = r.wordResults ? 'pointer' : 'default';
-        const time = document.createElement('td');
-        if (r.finished) {
-            const totalSec = Math.floor(r.time / 1e9);
-            const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
-            const s = String(totalSec % 60).padStart(2, '0');
-            time.textContent = m + ':' + s;
-        } else {
-            time.textContent = '—';
-        }
-        const status = document.createElement('td');
-        status.textContent = r.failed ? 'Échoué' : (r.finished ? 'Terminé' : 'En cours');
-        tr.appendChild(pos);
-        tr.appendChild(name);
-        tr.appendChild(time);
-        tr.appendChild(status);
-        tbody.appendChild(tr);
-
-        if (r.wordResults && r.wordResults.length > 0) {
-            const detailRow = document.createElement('tr');
-            detailRow.className = 'word-results-row';
-            detailRow.style.display = 'none';
-            const detailCell = document.createElement('td');
-            detailCell.colSpan = 4;
-            const wordResultsContainer = document.createElement('div');
-            wordResultsContainer.className = 'word-results';
-            renderWordResults(r.wordResults, wordResultsContainer);
-            detailCell.appendChild(wordResultsContainer);
-            detailRow.appendChild(detailCell);
-            tbody.appendChild(detailRow);
-
-            name.addEventListener('click', () => {
-                detailRow.style.display = detailRow.style.display === 'none' ? 'table-row' : 'none';
-            });
-        }
     });
 }
 
@@ -686,7 +690,8 @@ function submitGuess(word) {
                     showScreen('results');
                 }
             } else {
-                showMultiMessage(data.wordWon ? 'Mot trouvé !' : 'Mot échoué', data.wordWon ? 'win' : 'lose');
+                const isWon = data.wordWon;
+                showMultiMessage(isWon ? 'Mot trouvé !' : 'Mot échoué', isWon ? 'win' : 'lose');
                 setTimeout(() => {
                     mp.currentWordIdx = data.currentWordIdx;
                     loadNextWord();

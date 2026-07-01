@@ -3,7 +3,7 @@ let mp = newMp();
 
 function newMp() {
     return {
-        playerID: null, roomCode: null, mode: null, wordCount: null,
+        playerID: null, token: null, roomCode: null, mode: null, wordCount: null,
         state: null, creatorID: null, players: [], wordSequence: [],
         wordGames: [], currentWordIdx: 0, currentRow: 0, currentCol: 0,
         foundLetters: [], lockedPositions: new Set(), letterStatuses: {},
@@ -92,15 +92,13 @@ function createRoom() {
     .then(data => {
         if (data.error) { alert(data.error); return; }
         mp.playerID = data.playerID;
+        mp.token = data.token;
         mp.roomCode = data.roomCode;
         mp.mode = mode;
         mp.wordCount = wordCount;
         mp.creatorID = data.playerID;
 
-        document.getElementById('lobby-code').textContent = data.roomCode;
-        document.getElementById('lobby-share-url').value = window.location.origin + '/multiplayer?join=' + data.roomCode;
-        document.getElementById('lobby-mode').textContent = mode === 'progressif' ? 'Progressif' : 'Aléatoire';
-        document.getElementById('lobby-wordcount').textContent = wordCount;
+        updateLobbyInfo(data.roomCode, mode, wordCount);
         document.getElementById('start-game-btn').style.display = 'block';
 
         showScreen('lobby');
@@ -127,6 +125,7 @@ function joinRoom(code, nickname) {
     .then(data => {
         if (data.error) { alert(data.error); return; }
         mp.playerID = data.playerID;
+        mp.token = data.token;
         mp.roomCode = data.roomCode;
         mp.mode = data.mode;
         mp.wordCount = data.wordCount;
@@ -135,10 +134,7 @@ function joinRoom(code, nickname) {
 
         localStorage.setItem('tusmo-multi-playerid', data.playerID);
 
-        document.getElementById('lobby-code').textContent = data.roomCode;
-        document.getElementById('lobby-share-url').value = window.location.origin + '/multiplayer?join=' + data.roomCode;
-        document.getElementById('lobby-mode').textContent = data.mode === 'progressif' ? 'Progressif' : 'Aléatoire';
-        document.getElementById('lobby-wordcount').textContent = data.wordCount;
+        updateLobbyInfo(data.roomCode, data.mode, data.wordCount);
 
         if (data.creatorID === data.playerID) {
             document.getElementById('start-game-btn').style.display = 'block';
@@ -278,6 +274,7 @@ function setupSSE(roomCode, playerID) {
         renderRankings(data.rankings);
         if (data.playerID === mp.playerID) {
             showScreen('results');
+            updateNewGameBtn();
         }
     });
 
@@ -285,6 +282,18 @@ function setupSSE(roomCode, playerID) {
         const data = JSON.parse(e.data);
         renderRankings(data.rankings);
         showScreen('results');
+        updateNewGameBtn();
+    });
+
+    mp.eventSource.addEventListener('game-restarted', (e) => {
+        const data = JSON.parse(e.data);
+        mp.players = data.players;
+        updateLobbyPlayers();
+        if (mp.creatorID === mp.playerID) {
+            document.getElementById('start-game-btn').style.display = 'block';
+            document.getElementById('start-game-btn').disabled = false;
+        }
+        showScreen('lobby');
     });
 
     mp.eventSource.onerror = () => {
@@ -292,8 +301,8 @@ function setupSSE(roomCode, playerID) {
     };
 }
 
-function loadGame() {
-    fetch('/api/multiplayer/join', {
+function fetchGameState() {
+    return fetch('/api/multiplayer/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,9 +310,11 @@ function loadGame() {
             nickname: '',
             playerID: mp.playerID
         })
-    })
-    .then(res => res.json())
-    .then(data => {
+    }).then(res => res.json());
+}
+
+function loadGame() {
+    fetchGameState().then(data => {
         if (data.error) { return; }
         mp.wordSequence = data.wordSequence || [];
         mp.currentWordIdx = data.currentWordIdx || 0;
@@ -312,6 +323,13 @@ function loadGame() {
         loadCurrentWord();
         updateProgressPlayers();
     });
+}
+
+function updateLobbyInfo(roomCode, mode, wordCount) {
+    document.getElementById('lobby-code').textContent = roomCode;
+    document.getElementById('lobby-share-url').value = window.location.origin + '/multiplayer?join=' + roomCode;
+    document.getElementById('lobby-mode').textContent = mode === 'progressif' ? 'Progressif' : 'Aléatoire';
+    document.getElementById('lobby-wordcount').textContent = wordCount;
 }
 
 function updateLobbyPlayers() {
@@ -407,13 +425,21 @@ function leaveRoom() {
 }
 
 function newGame() {
-    const mode = mp.mode;
-    const wordCount = mp.wordCount;
-    leaveRoom();
-    document.getElementById('create-mode').value = mode;
-    document.getElementById('create-wordcount').value = wordCount;
-    document.getElementById('create-nickname').value = '';
-    showScreen('create');
+    fetch('/api/multiplayer/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID, token: mp.token })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+    })
+    .catch(err => alert('Erreur de connexion'));
+}
+
+function updateNewGameBtn() {
+    const newGameBtn = document.getElementById('new-game-btn');
+    newGameBtn.style.display = (mp.creatorID === mp.playerID) ? 'block' : 'none';
 }
 
 function renderRankings(rankings) {
@@ -544,16 +570,7 @@ function handleBackspace() {
 
     const newCol = col - 1;
     const tile = document.getElementById('mtile-' + row + '-' + newCol);
-
-    const foundLetter = mp.foundLetters.find(fp => fp.position === newCol);
-    if (foundLetter) {
-        tile.textContent = foundLetter.letter;
-        tile.classList.add('locked', 'correct');
-        tile.classList.remove('present', 'absent');
-    } else {
-        tile.textContent = '';
-        tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
-    }
+    resetTile(tile, newCol);
 
     mp.currentCol = newCol;
     addCursor();
@@ -647,17 +664,7 @@ function submitGuess(word) {
 }
 
 function loadNextWord() {
-    fetch('/api/multiplayer/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            roomCode: mp.roomCode,
-            nickname: '',
-            playerID: mp.playerID
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
+    fetchGameState().then(data => {
         if (data.error) { return; }
         mp.wordGames = data.wordGames || [];
         mp.currentWordIdx = data.currentWordIdx;
@@ -672,20 +679,24 @@ function enableInput() {
     addCursor();
 }
 
+function resetTile(tile, col) {
+    const foundLetter = mp.foundLetters.find(fp => fp.position === col);
+    if (foundLetter) {
+        tile.textContent = foundLetter.letter;
+        tile.classList.add('locked', 'correct');
+        tile.classList.remove('present', 'absent');
+    } else {
+        tile.textContent = '';
+        tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
+    }
+}
+
 function resetCurrentRow() {
     const row = mp.currentRow;
     const wordLength = mp.wordLength;
     for (let col = 0; col < wordLength; col++) {
         const tile = document.getElementById('mtile-' + row + '-' + col);
-        const foundLetter = mp.foundLetters.find(fp => fp.position === col);
-        if (foundLetter) {
-            tile.textContent = foundLetter.letter;
-            tile.classList.add('locked', 'correct');
-            tile.classList.remove('present', 'absent');
-        } else {
-            tile.textContent = '';
-            tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
-        }
+        resetTile(tile, col);
     }
     mp.currentCol = firstUnlockedPosition(0);
     addCursor();

@@ -53,6 +53,7 @@ func main() {
 	http.HandleFunc("/api/multiplayer/guess", mgr.MultiGuessHandler)
 	http.HandleFunc("/api/multiplayer/events", mgr.SSEHandler)
 	http.HandleFunc("/api/multiplayer/leave", mgr.LeaveRoomHandler)
+	http.HandleFunc("/api/multiplayer/restart", mgr.RestartGameHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

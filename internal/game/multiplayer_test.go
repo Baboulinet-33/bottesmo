@@ -214,6 +214,115 @@ func TestStartGameAlreadyStarted(t *testing.T) {
 	}
 }
 
+func TestRestartGame(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 3, "creator1", "Alice")
+	room.AddPlayer("player2", "Bob")
+
+	if err := room.StartGame(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := room.RestartGame(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if room.State != "lobby" {
+		t.Errorf("expected State lobby, got %s", room.State)
+	}
+	if room.WordSequence != nil {
+		t.Errorf("expected WordSequence nil, got %v", room.WordSequence)
+	}
+	if !room.StartTime.IsZero() {
+		t.Error("expected StartTime to be zero")
+	}
+
+	for id, player := range room.Players {
+		if player.WordGames != nil {
+			t.Errorf("player %s expected WordGames nil, got %v", id, player.WordGames)
+		}
+		if player.CurrentWordIdx != 0 {
+			t.Errorf("player %s expected CurrentWordIdx 0, got %d", id, player.CurrentWordIdx)
+		}
+		if !player.StartTime.IsZero() {
+			t.Errorf("player %s expected StartTime zero", id)
+		}
+		if !player.CompletedTime.IsZero() {
+			t.Errorf("player %s expected CompletedTime zero", id)
+		}
+		if player.Failed {
+			t.Errorf("player %s expected Failed false", id)
+		}
+		if player.Finished {
+			t.Errorf("player %s expected Finished false", id)
+		}
+	}
+
+	if room.CreatorID != "creator1" {
+		t.Errorf("expected CreatorID preserved, got %s", room.CreatorID)
+	}
+	if len(room.Players) != 2 {
+		t.Errorf("expected 2 players preserved, got %d", len(room.Players))
+	}
+}
+
+func TestRestartGame_NotPlaying(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 3, "creator1", "Alice")
+
+	err := room.RestartGame()
+	if err == nil {
+		t.Error("expected error when restarting a game in lobby state")
+	}
+}
+
+func TestRestartGame_MultiplePlayers(t *testing.T) {
+	room := NewMultiplayerRoom("ABC123", "progressif", 3, "creator1", "Alice")
+	room.AddPlayer("player2", "Bob")
+	room.AddPlayer("player3", "Charlie")
+
+	if err := room.StartGame(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	room.Players["creator1"].CurrentWordIdx = 2
+	room.Players["creator1"].Finished = true
+	room.Players["creator1"].Failed = false
+	room.Players["creator1"].CompletedTime = time.Now()
+
+	room.Players["player2"].CurrentWordIdx = 1
+	room.Players["player2"].Failed = true
+	room.Players["player2"].Finished = true
+	room.Players["player2"].CompletedTime = time.Now()
+
+	if err := room.RestartGame(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for id, player := range room.Players {
+		if player.WordGames != nil {
+			t.Errorf("player %s expected WordGames nil", id)
+		}
+		if player.CurrentWordIdx != 0 {
+			t.Errorf("player %s expected CurrentWordIdx 0, got %d", id, player.CurrentWordIdx)
+		}
+		if player.Failed {
+			t.Errorf("player %s expected Failed false", id)
+		}
+		if player.Finished {
+			t.Errorf("player %s expected Finished false", id)
+		}
+		if !player.StartTime.IsZero() {
+			t.Errorf("player %s expected StartTime zero", id)
+		}
+		if !player.CompletedTime.IsZero() {
+			t.Errorf("player %s expected CompletedTime zero", id)
+		}
+	}
+
+	if len(room.Players) != 3 {
+		t.Errorf("expected 3 players preserved, got %d", len(room.Players))
+	}
+}
+
 func TestProcessGuessCorrect(t *testing.T) {
 	room := NewMultiplayerRoom("ABC123", "progressif", 2, "creator1", "Alice")
 	room.StartGame()

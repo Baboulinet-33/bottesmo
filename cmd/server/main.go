@@ -8,8 +8,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"tusmo/internal/dictionary"
-	"tusmo/internal/handlers"
+	"bottesmo/internal/dictionary"
+	"bottesmo/internal/handlers"
 )
 
 func main() {
@@ -68,6 +68,6 @@ func main() {
 	}
 
 	buildInfo, _ := debug.ReadBuildInfo()
-	log.Printf("Tusmo starting on :%s (Go %s)", port, buildInfo.GoVersion)
+	log.Printf("Bottesmo starting on :%s (Go %s)", port, buildInfo.GoVersion)
 	log.Fatal(srv.ListenAndServe())
 }

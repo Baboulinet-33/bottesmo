@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3115';
+const BASE = 'http://localhost:3118';
 
 /**
  * Helper: types the given word into the current row using physical keyboard.
@@ -19,7 +19,7 @@ async function submitGuess(page) {
   await page.locator('#submit-btn').click();
 }
 
-test.describe('Tusmo E2E — Match UI to real Tusmo', () => {
+test.describe('Bottesmo E2E — Match UI to real Bottesmo', () => {
   let targetWord = '';
   let firstLetter = '';
 

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"tusmo/internal/dictionary"
+	"bottesmo/internal/dictionary"
 )
 
 type MultiplayerRoom struct {

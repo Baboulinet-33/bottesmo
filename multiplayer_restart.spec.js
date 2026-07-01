@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:3114';
+const BASE = 'http://localhost:3118';
 
 test.describe('Multiplayer Restart — New Game button restart in same lobby', () => {
 

@@ -1,9 +1,9 @@
-# Tusmo
+# Bottesmo
 
 ## Architecture
 
 ```
-tusmo/
+bottesmo/
 ├── cmd/
 │   └── server/
 │       └── main.go

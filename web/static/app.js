@@ -4,7 +4,7 @@ const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult"
 
 // Theme management
 function getPreferredTheme() {
-    const saved = localStorage.getItem('tusmo-theme');
+    const saved = localStorage.getItem('bottesmo-theme');
     if (saved) return saved;
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
@@ -17,7 +17,7 @@ function applyTheme(theme) {
 
 function toggleTheme() {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('tusmo-theme', next);
+    localStorage.setItem('bottesmo-theme', next);
     applyTheme(next);
 }
 
@@ -383,7 +383,7 @@ function showMessage(msg, type) {
 }
 
 function updateStats(won) {
-    const stats = JSON.parse(localStorage.getItem('tusmo-stats') || DEFAULT_STATS);
+    const stats = JSON.parse(localStorage.getItem('bottesmo-stats') || DEFAULT_STATS);
     stats.played++;
     if (won) {
         stats.won++;
@@ -394,13 +394,13 @@ function updateStats(won) {
         stats.streak = 0;
         stats.lastResult = 'lost';
     }
-    localStorage.setItem('tusmo-stats', JSON.stringify(stats));
+    localStorage.setItem('bottesmo-stats', JSON.stringify(stats));
     displayStats(stats);
 }
 
 function displayStats(stats) {
     if (!stats) {
-        stats = JSON.parse(localStorage.getItem('tusmo-stats') || DEFAULT_STATS);
+        stats = JSON.parse(localStorage.getItem('bottesmo-stats') || DEFAULT_STATS);
     }
     const el = document.getElementById('stats');
     el.innerHTML = 'Parties: ' + stats.played + ' | Victoires: ' + stats.won + ' | Séries: ' + stats.streak;

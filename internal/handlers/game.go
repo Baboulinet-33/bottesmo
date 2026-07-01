@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"tusmo/internal/dictionary"
-	"tusmo/internal/game"
+	"bottesmo/internal/dictionary"
+	"bottesmo/internal/game"
 )
 
 const maxBodySize = 1 << 20      // 1 MB

@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const joinCode = params.get('join');
 
-    const savedNick = localStorage.getItem('tusmo-multi-nickname');
+    const savedNick = localStorage.getItem('bottesmo-multi-nickname');
     if (savedNick) {
         document.getElementById('create-nickname').value = savedNick;
         document.getElementById('join-nickname').value = savedNick;
@@ -81,7 +81,7 @@ function createRoom() {
         return;
     }
 
-    localStorage.setItem('tusmo-multi-nickname', nickname);
+    localStorage.setItem('bottesmo-multi-nickname', nickname);
 
     fetch('/api/multiplayer/create', {
         method: 'POST',
@@ -109,8 +109,8 @@ function createRoom() {
 }
 
 function joinRoom(code, nickname) {
-    localStorage.setItem('tusmo-multi-nickname', nickname);
-    const savedID = localStorage.getItem('tusmo-multi-playerid');
+    localStorage.setItem('bottesmo-multi-nickname', nickname);
+    const savedID = localStorage.getItem('bottesmo-multi-playerid');
 
     fetch('/api/multiplayer/join', {
         method: 'POST',
@@ -132,7 +132,7 @@ function joinRoom(code, nickname) {
         mp.creatorID = data.creatorID;
         mp.players = data.players;
 
-        localStorage.setItem('tusmo-multi-playerid', data.playerID);
+        localStorage.setItem('bottesmo-multi-playerid', data.playerID);
 
         updateLobbyInfo(data.roomCode, data.mode, data.wordCount);
 

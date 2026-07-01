@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"tusmo/internal/dictionary"
-	"tusmo/internal/game"
+	"bottesmo/internal/dictionary"
+	"bottesmo/internal/game"
 )
 
 type SSEEvent struct {

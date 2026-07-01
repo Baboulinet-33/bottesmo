@@ -1,8 +1,8 @@
-# Tusmo — Spécification du Jeu
+# Bottesmo — Spécification du Jeu
 
 ## Vue d'ensemble
 
-Tusmo est un jeu de devinettes de mots en français, inspiré de Wordle. Le joueur dispose de **6 tentatives** pour trouver un mot cible. Une lettre de départ est dévoilée pour amorcer la réflexion. Après chaque proposition, un code couleur indique la pertinence de chaque lettre. Le jeu se joue dans un navigateur web, sans inscription.
+Bottesmo est un jeu de devinettes de mots en français, inspiré de Wordle. Le joueur dispose de **6 tentatives** pour trouver un mot cible. Une lettre de départ est dévoilée pour amorcer la réflexion. Après chaque proposition, un code couleur indique la pertinence de chaque lettre. Le jeu se joue dans un navigateur web, sans inscription.
 
 ---
 
@@ -51,7 +51,7 @@ L'algorithme suit la logique standard de Wordle pour les lettres dupliquées :
 
 ## Mécanique clé : première lettre verrouillée
 
-C'est la fonctionnalité signature qui distingue Tusmo de Wordle standard :
+C'est la fonctionnalité signature qui distingue Bottesmo de Wordle standard :
 
 1. La **première lettre** du mot cible est toujours pré-remplie et verrouillée dans **chaque ligne** de la grille.
 2. Après chaque proposition, les lettres marquées `Correct` (bien placées) deviennent des lettres **"trouvées"**.
@@ -195,7 +195,7 @@ func RandomWord() (string, error)
 
 - **Double thème** : sombre (défaut) et clair, basculable via un bouton dans l'en-tête.
 - **Bouton de thème** : intégré dans l'en-tête (flexbox `space-between`), il est stylisé sans fond ni bordure (`background: transparent; border: none`) avec un hover couleur accent (`var(--accent)`).
-- **Persistance** : le choix du thème est sauvegardé dans `localStorage` (clé `tusmo-theme`). À la première visite, le thème respecte la préférence système (`prefers-color-scheme`).
+- **Persistance** : le choix du thème est sauvegardé dans `localStorage` (clé `bottesmo-theme`). À la première visite, le thème respecte la préférence système (`prefers-color-scheme`).
 - **Mécanisme** : les couleurs sont définies via des **CSS custom properties** (`var(--…)`) dans `:root` (thème sombre) et `[data-theme="light"]` (surcharges claires). Voir `web/static/style.css` pour la palette complète.
 - **Palette** : accent ambre `#de802b`, correct émeraude `#10b981`, présent ambre `#f59e0b`, absent gris `#6b7280`.
 - **Police** : système (Segoe UI, Roboto, sans-serif).
@@ -231,7 +231,7 @@ func RandomWord() (string, error)
 
 ## Statistiques (localStorage)
 
-Les statistiques sont stockées dans le navigateur du joueur sous la clé `tusmo-stats` :
+Les statistiques sont stockées dans le navigateur du joueur sous la clé `bottesmo-stats` :
 
 ```json
 { "played": 42, "won": 35, "streak": 12, "maxStreak": 18, "lastResult": "won" }
@@ -250,7 +250,7 @@ Affichage en pied de page : `Parties: 42 | Victoires: 35 | Séries: 12`
 
 ### Tests E2E (Playwright)
 
-- `tusmo.spec.js` : 8 tests couvrant :
+- `bottesmo.spec.js` : 8 tests couvrant :
   1. Saisie au clavier et soumission.
   2. Comportement de la touche Retour arrière.
   3. Pré-remplissage des lettres trouvées à la ligne suivante.

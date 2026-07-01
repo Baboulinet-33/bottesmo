@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"tusmo/internal/dictionary"
+	"bottesmo/internal/dictionary"
 )
 
 func TestGenerateRoomCode(t *testing.T) {

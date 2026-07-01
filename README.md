@@ -1,4 +1,4 @@
-# Tusmo
+# Bottesmo
 
 Jeu de mots inspiré de Wordle, en français.
 

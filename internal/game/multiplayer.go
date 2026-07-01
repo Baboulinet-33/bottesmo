@@ -65,13 +65,15 @@ func GenerateRoomCode() string {
 }
 
 func GenerateWordSequence(mode string, count int) []string {
-	lengths := []int{6, 7, 8, 9, 10}
 	sequence := make([]string, count)
 
 	for i := range sequence {
-		l := 6 + rand.Intn(5)
-		if mode != "aleatoire" {
+		var l int
+		if mode == "progressif" {
+			lengths := []int{6, 7, 8, 9, 10}
 			l = lengths[i%len(lengths)]
+		} else {
+			l = 6 + rand.Intn(5)
 		}
 
 		word, err := dictionary.RandomWord(l)
@@ -110,6 +112,24 @@ func NewMultiplayerRoom(code, mode string, wordCount int, creatorID, creatorNick
 	return room
 }
 
+func (p *MultiplayerPlayer) initGames(sequence []string) {
+	p.WordGames = make([]*Game, len(sequence))
+	for i, word := range sequence {
+		p.WordGames[i] = NewGame(word, ModeSolo)
+	}
+	p.CurrentWordIdx = 0
+	p.StartTime = time.Now()
+}
+
+func (p *MultiplayerPlayer) reset() {
+	p.WordGames = nil
+	p.CurrentWordIdx = 0
+	p.StartTime = time.Time{}
+	p.CompletedTime = time.Time{}
+	p.Failed = false
+	p.Finished = false
+}
+
 func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 	if len(r.Players) >= r.MaxPlayers {
 		return fmt.Errorf("room is full")
@@ -125,12 +145,7 @@ func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 	}
 
 	if r.State == "playing" {
-		player.WordGames = make([]*Game, r.WordCount)
-		for i, word := range r.WordSequence {
-			player.WordGames[i] = NewGame(word, ModeSolo)
-		}
-		player.CurrentWordIdx = 0
-		player.StartTime = time.Now()
+		player.initGames(r.WordSequence)
 	}
 
 	r.Players[id] = player
@@ -141,7 +156,7 @@ func (r *MultiplayerRoom) StartGame() error {
 	if r.State != "lobby" {
 		return fmt.Errorf("game already started")
 	}
-	if len(r.Players) < 1 {
+	if len(r.Players) == 0 {
 		return fmt.Errorf("no players in room")
 	}
 
@@ -150,12 +165,7 @@ func (r *MultiplayerRoom) StartGame() error {
 	r.StartTime = time.Now()
 
 	for _, player := range r.Players {
-		player.WordGames = make([]*Game, r.WordCount)
-		for i, word := range r.WordSequence {
-			player.WordGames[i] = NewGame(word, ModeSolo)
-		}
-		player.CurrentWordIdx = 0
-		player.StartTime = time.Now()
+		player.initGames(r.WordSequence)
 	}
 
 	return nil
@@ -253,12 +263,7 @@ func (r *MultiplayerRoom) RestartGame() error {
 	r.WordSequence = nil
 
 	for _, player := range r.Players {
-		player.WordGames = nil
-		player.CurrentWordIdx = 0
-		player.StartTime = time.Time{}
-		player.CompletedTime = time.Time{}
-		player.Failed = false
-		player.Finished = false
+		player.reset()
 	}
 
 	return nil

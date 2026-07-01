@@ -3,7 +3,7 @@ let mp = newMp();
 
 function newMp() {
     return {
-        playerID: null, roomCode: null, mode: null, wordCount: null,
+        playerID: null, token: null, roomCode: null, mode: null, wordCount: null,
         state: null, creatorID: null, players: [], wordSequence: [],
         wordGames: [], currentWordIdx: 0, currentRow: 0, currentCol: 0,
         foundLetters: [], lockedPositions: new Set(), letterStatuses: {},
@@ -92,6 +92,7 @@ function createRoom() {
     .then(data => {
         if (data.error) { alert(data.error); return; }
         mp.playerID = data.playerID;
+        mp.token = data.token;
         mp.roomCode = data.roomCode;
         mp.mode = mode;
         mp.wordCount = wordCount;
@@ -124,6 +125,7 @@ function joinRoom(code, nickname) {
     .then(data => {
         if (data.error) { alert(data.error); return; }
         mp.playerID = data.playerID;
+        mp.token = data.token;
         mp.roomCode = data.roomCode;
         mp.mode = data.mode;
         mp.wordCount = data.wordCount;
@@ -289,6 +291,7 @@ function setupSSE(roomCode, playerID) {
         updateLobbyPlayers();
         if (mp.creatorID === mp.playerID) {
             document.getElementById('start-game-btn').style.display = 'block';
+            document.getElementById('start-game-btn').disabled = false;
         }
         showScreen('lobby');
     });
@@ -298,8 +301,8 @@ function setupSSE(roomCode, playerID) {
     };
 }
 
-function loadGame() {
-    fetch('/api/multiplayer/join', {
+function fetchGameState() {
+    return fetch('/api/multiplayer/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -307,9 +310,11 @@ function loadGame() {
             nickname: '',
             playerID: mp.playerID
         })
-    })
-    .then(res => res.json())
-    .then(data => {
+    }).then(res => res.json());
+}
+
+function loadGame() {
+    fetchGameState().then(data => {
         if (data.error) { return; }
         mp.wordSequence = data.wordSequence || [];
         mp.currentWordIdx = data.currentWordIdx || 0;
@@ -423,7 +428,7 @@ function newGame() {
     fetch('/api/multiplayer/restart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
+        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID, token: mp.token })
     })
     .then(res => res.json())
     .then(data => {
@@ -659,17 +664,7 @@ function submitGuess(word) {
 }
 
 function loadNextWord() {
-    fetch('/api/multiplayer/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            roomCode: mp.roomCode,
-            nickname: '',
-            playerID: mp.playerID
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
+    fetchGameState().then(data => {
         if (data.error) { return; }
         mp.wordGames = data.wordGames || [];
         mp.currentWordIdx = data.currentWordIdx;

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -89,15 +91,23 @@ type wordGameState struct {
 }
 
 type MultiplayerManager struct {
-	mu    sync.RWMutex
-	rooms map[string]*game.MultiplayerRoom
-	hub   *MultiplayerHub
+	mu           sync.RWMutex
+	rooms        map[string]*game.MultiplayerRoom
+	hub          *MultiplayerHub
+	playerTokens map[string]string
+}
+
+func (mm *MultiplayerManager) generateToken() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func NewMultiplayerManager() *MultiplayerManager {
 	return &MultiplayerManager{
-		rooms: make(map[string]*game.MultiplayerRoom),
-		hub:   NewMultiplayerHub(),
+		rooms:        make(map[string]*game.MultiplayerRoom),
+		hub:          NewMultiplayerHub(),
+		playerTokens: make(map[string]string),
 	}
 }
 
@@ -184,6 +194,7 @@ type createRoomResponse struct {
 	RoomCode string `json:"roomCode"`
 	ShareURL string `json:"shareURL"`
 	PlayerID string `json:"playerID"`
+	Token    string `json:"token"`
 }
 
 func (m *GameManager) CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
@@ -227,14 +238,17 @@ func (m *GameManager) CreateRoomHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	playerID := m.generateID()
+	token := mm.generateToken()
 	room := game.NewMultiplayerRoom(code, req.Mode, req.WordCount, playerID, req.Nickname)
 	mm.rooms[code] = room
+	mm.playerTokens[playerID] = token
 	mm.mu.Unlock()
 
 	writeJSON(w, http.StatusOK, createRoomResponse{
 		RoomCode: code,
 		ShareURL: "/multiplayer?join=" + code,
 		PlayerID: playerID,
+		Token:    token,
 	})
 }
 
@@ -246,6 +260,7 @@ type joinRoomRequest struct {
 
 type joinRoomResponse struct {
 	PlayerID       string          `json:"playerID"`
+	Token          string          `json:"token"`
 	RoomCode       string          `json:"roomCode"`
 	Mode           string          `json:"mode"`
 	WordCount      int             `json:"wordCount"`
@@ -299,10 +314,13 @@ func (m *GameManager) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
+		token := mm.generateToken()
+		mm.playerTokens[playerID] = token
 	}
 
 	resp := joinRoomResponse{
 		PlayerID:  playerID,
+		Token:     mm.playerTokens[playerID],
 		RoomCode:  room.Code,
 		Mode:      room.Mode,
 		WordCount: room.WordCount,
@@ -460,8 +478,12 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 		Data:  map[string]any{"players": players},
 	})
 
+	var rankings []game.RankingEntry
+	if resp.PlayerFinished || roomFinished {
+		rankings = room.GetRankings()
+	}
+
 	if resp.PlayerFinished {
-		rankings := room.GetRankings()
 		resp.Rankings = rankings
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "player-finished",
@@ -473,7 +495,6 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if roomFinished {
-		rankings := room.GetRankings()
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "game-over",
 			Data:  map[string]any{"rankings": rankings},
@@ -551,6 +572,7 @@ type leaveRoomRequest struct {
 type restartGameRequest struct {
 	RoomCode string `json:"roomCode"`
 	PlayerID string `json:"playerID"`
+	Token    string `json:"token"`
 }
 
 func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request) {
@@ -579,6 +601,12 @@ func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request)
 	if room.CreatorID != req.PlayerID {
 		mm.mu.Unlock()
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "only the creator can restart the game"})
+		return
+	}
+
+	if mm.playerTokens[req.PlayerID] != req.Token {
+		mm.mu.Unlock()
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid token"})
 		return
 	}
 

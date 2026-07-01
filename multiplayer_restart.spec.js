@@ -12,6 +12,7 @@ test.describe('Multiplayer Restart — New Game button restart in same lobby', (
     const createData = await createResp.json();
     const roomCode = createData.roomCode;
     const aliceID = createData.playerID;
+    const aliceToken = createData.token;
 
     const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
       data: { roomCode, nickname: 'Bob' }
@@ -53,7 +54,7 @@ test.describe('Multiplayer Restart — New Game button restart in same lobby', (
     expect(bobGuessResp.ok()).toBe(true);
 
     const restartResp = await request.post(`${BASE}/api/multiplayer/restart`, {
-      data: { roomCode, playerID: aliceID }
+      data: { roomCode, playerID: aliceID, token: aliceToken }
     });
     expect(restartResp.ok()).toBe(true);
 
@@ -98,6 +99,7 @@ test.describe('Multiplayer Restart — New Game button restart in same lobby', (
     const createData = await createResp.json();
     const roomCode = createData.roomCode;
     const aliceID = createData.playerID;
+    const aliceToken = createData.token;
 
     const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
       data: { roomCode, nickname: 'Bob' }
@@ -130,7 +132,7 @@ test.describe('Multiplayer Restart — New Game button restart in same lobby', (
     });
 
     await request.post(`${BASE}/api/multiplayer/restart`, {
-      data: { roomCode, playerID: aliceID }
+      data: { roomCode, playerID: aliceID, token: aliceToken }
     });
 
     const leaveResp = await request.post(`${BASE}/api/multiplayer/leave`, {

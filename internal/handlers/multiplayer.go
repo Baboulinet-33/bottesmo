@@ -407,14 +407,8 @@ type multiGuessRequest struct {
 }
 
 type multiGuessResponse struct {
-	Results        []game.LetterResult `json:"results"`
-	WordFinished   bool                `json:"wordFinished"`
-	WordWon        bool                `json:"wordWon"`
-	PlayerFinished bool                `json:"playerFinished"`
-	PlayerFailed   bool                `json:"playerFailed"`
-	CurrentWordIdx int                 `json:"currentWordIdx"`
-	TotalWords     int                 `json:"totalWords"`
-	Rankings       []game.RankingEntry `json:"rankings,omitempty"`
+	game.MultiplayerGuessResult
+	Rankings []game.RankingEntry `json:"rankings,omitempty"`
 }
 
 func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) {
@@ -453,13 +447,7 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	resp := multiGuessResponse{
-		Results:        multiGuessResult.Results,
-		WordFinished:   multiGuessResult.WordFinished,
-		WordWon:        multiGuessResult.WordWon,
-		PlayerFinished: multiGuessResult.PlayerFinished,
-		PlayerFailed:   multiGuessResult.PlayerFailed,
-		CurrentWordIdx: multiGuessResult.CurrentWordIdx,
-		TotalWords:     multiGuessResult.TotalWords,
+		MultiplayerGuessResult: *multiGuessResult,
 	}
 
 	players := playersInfo(room)
@@ -558,6 +546,57 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 type leaveRoomRequest struct {
 	RoomCode string `json:"roomCode"`
 	PlayerID string `json:"playerID"`
+}
+
+type restartGameRequest struct {
+	RoomCode string `json:"roomCode"`
+	PlayerID string `json:"playerID"`
+}
+
+func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var req restartGameRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+		return
+	}
+
+	mm := m.multi
+	mm.mu.Lock()
+	room, ok := mm.rooms[req.RoomCode]
+	if !ok {
+		mm.mu.Unlock()
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "room not found"})
+		return
+	}
+
+	if room.CreatorID != req.PlayerID {
+		mm.mu.Unlock()
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "only the creator can restart the game"})
+		return
+	}
+
+	if err := room.RestartGame(); err != nil {
+		mm.mu.Unlock()
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	players := playersInfo(room)
+	mm.mu.Unlock()
+
+	mm.hub.Broadcast(room.Code, SSEEvent{
+		Event: "game-restarted",
+		Data:  map[string]any{"players": players},
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
 func (m *GameManager) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {

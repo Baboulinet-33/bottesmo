@@ -65,22 +65,18 @@ func GenerateRoomCode() string {
 }
 
 func GenerateWordSequence(mode string, count int) []string {
-	sequence := make([]string, count)
 	lengths := []int{6, 7, 8, 9, 10}
+	sequence := make([]string, count)
 
-	for i := 0; i < count; i++ {
-		var l int
-		switch mode {
-		case "aleatoire":
-			l = 6 + rand.Intn(5)
-		default:
+	for i := range sequence {
+		l := 6 + rand.Intn(5)
+		if mode != "aleatoire" {
 			l = lengths[i%len(lengths)]
 		}
 
 		word, err := dictionary.RandomWord(l)
 		for attempt := 0; err != nil && attempt < 10; attempt++ {
-			l = 6 + rand.Intn(5)
-			word, err = dictionary.RandomWord(l)
+			word, err = dictionary.RandomWord(6 + rand.Intn(5))
 		}
 		if err != nil {
 			sequence[i] = "AAAAAA"
@@ -245,6 +241,27 @@ func (r *MultiplayerRoom) IsRoomFinished() bool {
 		}
 	}
 	return true
+}
+
+func (r *MultiplayerRoom) RestartGame() error {
+	if r.State != "playing" {
+		return fmt.Errorf("game is not in progress")
+	}
+
+	r.State = "lobby"
+	r.StartTime = time.Time{}
+	r.WordSequence = nil
+
+	for _, player := range r.Players {
+		player.WordGames = nil
+		player.CurrentWordIdx = 0
+		player.StartTime = time.Time{}
+		player.CompletedTime = time.Time{}
+		player.Failed = false
+		player.Finished = false
+	}
+
+	return nil
 }
 
 func (r *MultiplayerRoom) RemovePlayer(playerID string) {

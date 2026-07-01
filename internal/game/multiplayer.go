@@ -36,12 +36,19 @@ type MultiplayerPlayer struct {
 	JoinedAt       time.Time
 }
 
+type WordResult struct {
+	Target   string            `json:"target"`
+	Attempts []string          `json:"attempts"`
+	Results  [][]LetterResult  `json:"results"`
+}
+
 type RankingEntry struct {
-	PlayerID string        `json:"playerID"`
-	Nickname string        `json:"nickname"`
-	Time     time.Duration `json:"time"`
-	Failed   bool          `json:"failed"`
-	Finished bool          `json:"finished"`
+	PlayerID    string        `json:"playerID"`
+	Nickname    string        `json:"nickname"`
+	Time        time.Duration `json:"time"`
+	Failed      bool          `json:"failed"`
+	Finished    bool          `json:"finished"`
+	WordResults []WordResult  `json:"wordResults,omitempty"`
 }
 
 type MultiplayerGuessResult struct {
@@ -112,9 +119,9 @@ func NewMultiplayerRoom(code, mode string, wordCount int, creatorID, creatorNick
 	return room
 }
 
-func (p *MultiplayerPlayer) initGames(sequence []string) {
-	p.WordGames = make([]*Game, len(sequence))
-	for i, word := range sequence {
+func (r *MultiplayerRoom) initPlayerGames(p *MultiplayerPlayer) {
+	p.WordGames = make([]*Game, r.WordCount)
+	for i, word := range r.WordSequence {
 		p.WordGames[i] = NewGame(word, ModeSolo)
 	}
 	p.CurrentWordIdx = 0
@@ -129,6 +136,7 @@ func (p *MultiplayerPlayer) reset() {
 	p.Failed = false
 	p.Finished = false
 }
+
 
 func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 	if len(r.Players) >= r.MaxPlayers {
@@ -145,7 +153,7 @@ func (r *MultiplayerRoom) AddPlayer(id, nickname string) error {
 	}
 
 	if r.State == "playing" {
-		player.initGames(r.WordSequence)
+		r.initPlayerGames(player)
 	}
 
 	r.Players[id] = player
@@ -165,7 +173,7 @@ func (r *MultiplayerRoom) StartGame() error {
 	r.StartTime = time.Now()
 
 	for _, player := range r.Players {
-		player.initGames(r.WordSequence)
+		r.initPlayerGames(player)
 	}
 
 	return nil
@@ -227,6 +235,15 @@ func (r *MultiplayerRoom) GetRankings() []RankingEntry {
 		}
 		if p.Finished {
 			entry.Time = p.CompletedTime.Sub(r.StartTime)
+			entry.WordResults = make([]WordResult, len(p.WordGames))
+			for i, g := range p.WordGames {
+				results, _ := ComputeAttemptResults(g.Target, g.Attempts)
+				entry.WordResults[i] = WordResult{
+					Target:   g.Target,
+					Attempts: g.Attempts,
+					Results:  results,
+				}
+			}
 		}
 		entries = append(entries, entry)
 	}

@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"tusmo/internal/dictionary"
 )
@@ -452,12 +451,34 @@ func TestGetRankings(t *testing.T) {
 	}
 
 	player1 := room.Players["creator1"]
-	player1.Finished = true
-	player1.CompletedTime = time.Now()
+	for i := 0; i < room.WordCount; i++ {
+		target := player1.WordGames[i].Target
+		_, err := room.ProcessGuess("creator1", target)
+		if err != nil {
+			t.Fatalf("unexpected error guessing word %d: %v", i, err)
+		}
+	}
 
 	rankings = room.GetRankings()
 	if !rankings[0].Finished {
 		t.Error("expected first ranking to be finished")
+	}
+
+	aliceRanking := rankings[0]
+	if len(aliceRanking.WordResults) != room.WordCount {
+		t.Errorf("expected %d WordResults, got %d", room.WordCount, len(aliceRanking.WordResults))
+	}
+	for i, wr := range aliceRanking.WordResults {
+		expected := player1.WordGames[i]
+		if wr.Target != expected.Target {
+			t.Errorf("word %d: expected target %q, got %q", i, expected.Target, wr.Target)
+		}
+		if len(wr.Attempts) != len(expected.Attempts) {
+			t.Errorf("word %d: expected %d attempts, got %d", i, len(expected.Attempts), len(wr.Attempts))
+		}
+		if len(wr.Results) != len(expected.Attempts) {
+			t.Errorf("word %d: expected %d result rows, got %d", i, len(expected.Attempts), len(wr.Results))
+		}
 	}
 }
 

@@ -633,6 +633,65 @@ main {
     font-size: 0.95rem;
 }
 
+.word-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.word-result {
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    padding: 0.5rem;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.word-result-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.mini-row {
+    display: flex;
+    gap: 2px;
+}
+
+.mini-tile {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-radius: 3px;
+    color: var(--correct-contrast);
+}
+
+.mini-tile.correct {
+    background: var(--correct);
+    color: var(--correct-contrast);
+}
+
+.mini-tile.present {
+    background: var(--present);
+    color: var(--present-contrast);
+}
+
+.mini-tile.absent {
+    background: var(--absent);
+    color: var(--absent-contrast);
+}
+
+.word-results-row td {
+    padding: 0.25rem 0.6rem !important;
+}
+
 #theme-toggle {
     background: transparent;
     color: var(--text-primary);

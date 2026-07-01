@@ -442,6 +442,29 @@ function updateNewGameBtn() {
     newGameBtn.style.display = (mp.creatorID === mp.playerID) ? 'block' : 'none';
 }
 
+function renderWordResults(wordResults, container) {
+    wordResults.forEach((wr, wi) => {
+        const card = document.createElement('div');
+        card.className = 'word-result';
+        const label = document.createElement('div');
+        label.className = 'word-result-label';
+        label.textContent = 'Mot ' + (wi + 1) + ' : ' + wr.target;
+        card.appendChild(label);
+        wr.results.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'mini-row';
+            row.forEach(r => {
+                const tile = document.createElement('span');
+                tile.className = 'mini-tile ' + (STATUS_CLASSES[r.Status] || 'absent');
+                tile.textContent = String.fromCharCode(r.Letter);
+                rowDiv.appendChild(tile);
+            });
+            card.appendChild(rowDiv);
+        });
+        container.appendChild(card);
+    });
+}
+
 function renderRankings(rankings) {
     const tbody = document.getElementById('rankings-body');
     tbody.innerHTML = '';
@@ -451,6 +474,7 @@ function renderRankings(rankings) {
         pos.textContent = idx + 1;
         const name = document.createElement('td');
         name.textContent = r.nickname;
+        name.style.cursor = r.wordResults ? 'pointer' : 'default';
         const time = document.createElement('td');
         if (r.finished) {
             const totalSec = Math.floor(r.time / 1e9);
@@ -467,6 +491,24 @@ function renderRankings(rankings) {
         tr.appendChild(time);
         tr.appendChild(status);
         tbody.appendChild(tr);
+
+        if (r.wordResults && r.wordResults.length > 0) {
+            const detailRow = document.createElement('tr');
+            detailRow.className = 'word-results-row';
+            detailRow.style.display = 'none';
+            const detailCell = document.createElement('td');
+            detailCell.colSpan = 4;
+            const wordResultsContainer = document.createElement('div');
+            wordResultsContainer.className = 'word-results';
+            renderWordResults(r.wordResults, wordResultsContainer);
+            detailCell.appendChild(wordResultsContainer);
+            detailRow.appendChild(detailCell);
+            tbody.appendChild(detailRow);
+
+            name.addEventListener('click', () => {
+                detailRow.style.display = detailRow.style.display === 'none' ? 'table-row' : 'none';
+            });
+        }
     });
 }
 
@@ -664,13 +706,7 @@ function submitGuess(word) {
 }
 
 function loadNextWord() {
-    fetchGameState().then(data => {
-        if (data.error) { return; }
-        mp.wordGames = data.wordGames || [];
-        mp.currentWordIdx = data.currentWordIdx;
-        mp.wordSequence = data.wordSequence || [];
-        loadCurrentWord();
-    });
+    loadGame();
 }
 
 function enableInput() {

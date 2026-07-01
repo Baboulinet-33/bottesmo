@@ -36,7 +36,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/bottesmo
+          images: ${{ secrets.DOCKERHUB_USERNAME || github.repository_owner }}/bottesmo
           tags: |
             type=ref,event=branch
             type=ref,event=pr

@@ -74,6 +74,16 @@ func LoadFromBytes(data []byte) (LoadResult, error) {
 		return result, fmt.Errorf("dictionary is empty")
 	}
 
+	for l := range wordsByLength {
+		sort.Strings(wordsByLength[l])
+		if minLen == 0 || l < minLen {
+			minLen = l
+		}
+		if l > maxLen {
+			maxLen = l
+		}
+	}
+
 	return result, nil
 }
 
@@ -192,8 +202,8 @@ func DailyWord(length int, date string) (string, error) {
 func DailyLength(date string) int {
 	h := sha256.Sum256([]byte("daily-length:" + date))
 	sum := int(h[0])
-	span := maxLen - minLen + 1
-	return minLen + (sum % span)
+	range_ := maxLen - minLen + 1
+	return minLen + (sum % range_)
 }
 
 func Reset() {

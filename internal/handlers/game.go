@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	mathrand "math/rand"
@@ -13,6 +14,7 @@ import (
 
 	"bottesmo/internal/dictionary"
 	"bottesmo/internal/game"
+	"bottesmo/internal/version"
 )
 
 const maxBodySize = 1 << 20      // 1 MB
@@ -85,6 +87,46 @@ func (m *GameManager) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "layout.html", map[string]any{
 		"Page": "home",
 	})
+}
+
+type dictStatus struct {
+	Name      string `json:"name"`
+	Version   string `json:"version"`
+	WordCount int    `json:"word_count"`
+	SHA256    string `json:"sha256"`
+}
+
+type statusResponse struct {
+	Status       string       `json:"status"`
+	Version      string       `json:"version"`
+	Dictionaries []dictStatus `json:"dictionaries"`
+}
+
+func dictStatusFrom(name string, r dictionary.LoadResult) dictStatus {
+	return dictStatus{
+		Name:      name,
+		Version:   r.Version,
+		WordCount: r.WordCount,
+		SHA256:    fmt.Sprintf("%x", r.SHA256),
+	}
+}
+
+func (m *GameManager) StatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	resp := statusResponse{
+		Status:  "ok",
+		Version: version.Version,
+		Dictionaries: []dictStatus{
+			dictStatusFrom("words", dictionary.DictInfo()),
+			dictStatusFrom("words_full", dictionary.FullDictInfo()),
+		},
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (m *GameManager) GamePageHandler(w http.ResponseWriter, r *http.Request) {

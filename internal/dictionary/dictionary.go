@@ -19,6 +19,9 @@ var (
 	fullWordSet   = make(map[string]bool)
 
 	minLen, maxLen int
+
+	dictResult     LoadResult
+	fullDictResult LoadResult
 )
 
 type LoadResult struct {
@@ -26,6 +29,9 @@ type LoadResult struct {
 	WordCount int
 	SHA256    [32]byte
 }
+
+func DictInfo() LoadResult    { return dictResult }
+func FullDictInfo() LoadResult { return fullDictResult }
 
 func parseVersionLine(line string) (string, bool) {
 	if strings.HasPrefix(line, "DICT_VERSION=") {
@@ -35,8 +41,7 @@ func parseVersionLine(line string) (string, bool) {
 }
 
 func processWord(w string) string {
-	w = strings.TrimSpace(w)
-	return strings.ToUpper(w)
+	return strings.ToUpper(strings.TrimSpace(w))
 }
 
 func forEachWord(data []byte, fn func(string)) LoadResult {
@@ -144,6 +149,7 @@ func LoadFromSource(source string) (LoadResult, error) {
 	}
 
 	log.Printf("Dictionary loaded: version=%s words=%d sha256=%x", result.Version, result.WordCount, result.SHA256)
+	dictResult = result
 	return result, nil
 }
 
@@ -159,6 +165,7 @@ func LoadFullFromSource(source string) (LoadResult, error) {
 	}
 
 	log.Printf("Full dictionary loaded: version=%s words=%d sha256=%x", result.Version, result.WordCount, result.SHA256)
+	fullDictResult = result
 	return result, nil
 }
 
@@ -212,6 +219,9 @@ func Reset() {
 
 	minLen = 0
 	maxLen = 0
+
+	dictResult = LoadResult{}
+	fullDictResult = LoadResult{}
 }
 
 func MinLength() int {

@@ -435,6 +435,43 @@ test.describe('Multiplayer API', () => {
   });
 });
 
+test.describe('GET /api/status', () => {
+  test('1. Returns 200 with status, version, and dictionaries', async ({ request }) => {
+    const resp = await request.get(`${BASE}/api/status`);
+    expect(resp.ok()).toBe(true);
+    const data = await resp.json();
+
+    expect(data.status).toBe('ok');
+    expect(typeof data.version).toBe('string');
+    expect(data.version.length).toBeGreaterThan(0);
+    expect(Array.isArray(data.dictionaries)).toBe(true);
+    expect(data.dictionaries.length).toBe(2);
+  });
+
+  test('2. Dictionaries have name, word_count, sha256', async ({ request }) => {
+    const resp = await request.get(`${BASE}/api/status`);
+    const data = await resp.json();
+
+    for (const dict of data.dictionaries) {
+      expect(dict).toHaveProperty('name');
+      expect(dict).toHaveProperty('word_count');
+      expect(dict).toHaveProperty('sha256');
+      expect(typeof dict.name).toBe('string');
+      expect(dict.word_count).toBeGreaterThan(0);
+      expect(dict.sha256.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('3. Dictionaries include words and words_full', async ({ request }) => {
+    const resp = await request.get(`${BASE}/api/status`);
+    const data = await resp.json();
+
+    const names = data.dictionaries.map(d => d.name);
+    expect(names).toContain('words');
+    expect(names).toContain('words_full');
+  });
+});
+
 test.describe('Theme toggle', () => {
   test('1. Theme toggle button exists on home page', async ({ page }) => {
     await page.goto(`${BASE}/`);

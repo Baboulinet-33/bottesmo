@@ -47,6 +47,7 @@ func main() {
 
 	http.HandleFunc("/", mgr.HomeHandler)
 	http.HandleFunc("/game", mgr.GamePageHandler)
+	http.HandleFunc("/api/status", mgr.StatusHandler)
 	http.HandleFunc("/api/game/new", mgr.NewGameHandler)
 	http.HandleFunc("/api/game/guess", mgr.GuessHandler)
 

@@ -50,3 +50,7 @@ Les fichiers dictionnaire peuvent optionnellement commencer par une ligne `DICT_
 ### Validation orthographique
 
 La validation orthographique des mots saisis par le joueur est effectuée côté client via Typo.js (dictionnaire Hunspell français). Le serveur n'effectue plus de validation dictionnaire.
+
+## Spécifications
+
+Le dossier [`specs/`](../specs/) est la source de vérité pour les spécifications fonctionnelles. Les specs sont organisées par domaine fonctionnel (règles du jeu, modes, API, modèle de données, dictionnaire, frontend, configuration serveur, tests, multi-joueur). L'ancien fichier `game.md` a été supprimé. Tout ajout de fonctionnalité doit mettre à jour ou créer le fichier de spec correspondant.

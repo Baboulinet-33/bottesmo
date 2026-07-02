@@ -47,3 +47,17 @@ Vous pouvez remplacer `words_full.txt` par un dictionnaire français complet (ex
 Après modification, redémarrer le serveur pour prendre en compte les changements.
 
 Les mots sont automatiquement convertis en majuscules au chargement. Les lignes vides sont ignorées.
+
+## Spécifications
+
+Les spécifications fonctionnelles sont organisées par domaine dans le dossier [`specs/`](specs/) :
+
+- [Règles du jeu](specs/game-rules.md)
+- [Modes de jeu](specs/game-modes.md)
+- [API](specs/api.md)
+- [Modèle de données](specs/data-model.md)
+- [Dictionnaire](specs/dictionary.md)
+- [Frontend](specs/frontend.md)
+- [Configuration serveur](specs/server-config.md)
+- [Tests](specs/testing.md)
+- [Multi-joueur](specs/multiplayer.md)

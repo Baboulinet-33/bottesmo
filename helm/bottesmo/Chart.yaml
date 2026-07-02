@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bottesmo
+description: Bottesmo — jeu Wordle-like en français avec mode multijoueur temps réel via SSE
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

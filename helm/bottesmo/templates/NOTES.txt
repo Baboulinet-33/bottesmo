@@ -1,0 +1,28 @@
+1. Bottesmo a été déployé avec succès !
+
+{{- if .Values.ingress.enabled }}
+2. Accès via Ingress :
+  {{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+  {{- end }}
+{{- else }}
+2. Pour accéder à l'application, utilisez le port-forward :
+
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "bottesmo.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME {{ .Values.service.targetPort }}:{{ .Values.service.targetPort }}
+
+  Puis ouvrez http://localhost:{{ .Values.service.targetPort }}
+{{- end }}
+
+3. IMPORTANT — Contrainte 1 réplica :
+   L'état multijoueur (rooms, joueurs, flux SSE) est stocké en mémoire dans le pod.
+   Ne pas scaler au-delà de 1 réplica sans backend partagé, sous peine de perdre
+   silencieusement des rooms multijoueur.
+
+4. Mise à jour de l'image :
+   Comme l'image utilise le tag "latest" avec pullPolicy Always, pour forcer le
+   repull après un push sur Docker Hub :
+
+   helm upgrade {{ .Release.Name }} ./helm/bottesmo --namespace {{ .Release.Namespace }}
+   # ou pour forcer un redémarrage sans changer les valeurs :
+   kubectl rollout restart deployment/{{ include "bottesmo.fullname" . }} --namespace {{ .Release.Namespace }}

@@ -1,6 +1,10 @@
 package dictionary
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -163,5 +167,113 @@ func TestRandomWord(t *testing.T) {
 	valid := word == "ABRITE" || word == "ACCORD" || word == "ACTION"
 	if !valid {
 		t.Errorf("unexpected word: %q", word)
+	}
+}
+
+func TestVersionLineDetection(t *testing.T) {
+	Reset()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "words.txt")
+	content := "DICT_VERSION=3\nABRITE\nACCORD\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := LoadFromSource(path)
+	if err != nil {
+		t.Fatalf("LoadFromSource failed: %v", err)
+	}
+
+	if result.Version != "3" {
+		t.Errorf("expected version=3, got %q", result.Version)
+	}
+
+	sixLetter := WordsByLength(6)
+	if len(sixLetter) != 2 {
+		t.Errorf("expected 2 six-letter words, got %d", len(sixLetter))
+	}
+}
+
+func TestLoadFromSourceLocal(t *testing.T) {
+	Reset()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "words.txt")
+	content := "ABRITE\nACCORD\nACTION\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedSHA := sha256.Sum256([]byte(content))
+
+	result, err := LoadFromSource(path)
+	if err != nil {
+		t.Fatalf("LoadFromSource failed: %v", err)
+	}
+
+	if result.WordCount != 3 {
+		t.Errorf("expected 3 words, got %d", result.WordCount)
+	}
+
+	if result.SHA256 != expectedSHA {
+		t.Errorf("SHA256 mismatch: got %x, expected %x", result.SHA256, expectedSHA)
+	}
+}
+
+func TestLoadFromSourceHTTP(t *testing.T) {
+	Reset()
+	content := "ABRITE\nACCORD\nACTION\n"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, content)
+	}))
+	defer srv.Close()
+
+	result, err := LoadFromSource(srv.URL)
+	if err != nil {
+		t.Fatalf("LoadFromSource HTTP failed: %v", err)
+	}
+
+	if result.WordCount != 3 {
+		t.Errorf("expected 3 words, got %d", result.WordCount)
+	}
+
+	sixLetter := WordsByLength(6)
+	if len(sixLetter) != 3 {
+		t.Errorf("expected 3 six-letter words, got %d", len(sixLetter))
+	}
+}
+
+func TestSHA256Consistency(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "words.txt")
+	content := "ABRITE\nACCORD\nACTION\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedSHA := sha256.Sum256([]byte(content))
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, content)
+	}))
+	defer srv.Close()
+
+	Reset()
+	resultFile, err := LoadFromSource(path)
+	if err != nil {
+		t.Fatalf("LoadFromSource local failed: %v", err)
+	}
+
+	Reset()
+	resultHTTP, err := LoadFromSource(srv.URL)
+	if err != nil {
+		t.Fatalf("LoadFromSource HTTP failed: %v", err)
+	}
+
+	if resultFile.SHA256 != resultHTTP.SHA256 {
+		t.Errorf("SHA256 mismatch: local=%x, http=%x", resultFile.SHA256, resultHTTP.SHA256)
+	}
+
+	if resultFile.SHA256 != expectedSHA {
+		t.Errorf("SHA256 does not match expected: got %x, expected %x", resultFile.SHA256, expectedSHA)
 	}
 }

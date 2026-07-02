@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime/debug"
+	"runtime"
 	"time"
 
 	"bottesmo/internal/dictionary"
@@ -18,13 +18,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dictPath := filepath.Join(wd, "internal", "dictionary", "words.txt")
-	if err := dictionary.Load(dictPath); err != nil {
+	dictSource := os.Getenv("DICT_WORDS_SOURCE")
+	if dictSource == "" {
+		dictSource = filepath.Join(wd, "internal", "dictionary", "words.txt")
+	}
+	if _, err := dictionary.LoadFromSource(dictSource); err != nil {
 		log.Fatal(err)
 	}
 
-	fullDictPath := filepath.Join(wd, "internal", "dictionary", "words_full.txt")
-	if err := dictionary.LoadFull(fullDictPath); err != nil {
+	fullDictSource := os.Getenv("DICT_WORDS_FULL_SOURCE")
+	if fullDictSource == "" {
+		fullDictSource = filepath.Join(wd, "internal", "dictionary", "words_full.txt")
+	}
+	if _, err := dictionary.LoadFullFromSource(fullDictSource); err != nil {
 		log.Fatal(err)
 	}
 
@@ -67,7 +73,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	buildInfo, _ := debug.ReadBuildInfo()
-	log.Printf("Bottesmo starting on :%s (Go %s)", port, buildInfo.GoVersion)
+	log.Printf("Bottesmo starting on :%s (Go %s)", port, runtime.Version())
 	log.Fatal(srv.ListenAndServe())
 }

@@ -14,8 +14,10 @@ bottesmo/
 │   ├── game/
 │   │   ├── game.go
 │   │   └── game_test.go
-│   └── handlers/
-│       └── game.go
+│   ├── handlers/
+│   │   └── game.go
+│   └── version/
+│       └── version.go
 ├── web/
 │   ├── templates/
 │   │   ├── layout.html
@@ -40,6 +42,14 @@ bottesmo/
 Both `DICT_WORDS_SOURCE` and `DICT_WORDS_FULL_SOURCE` support auto-detection: if the value starts with `http://` or `https://` it is fetched via HTTP GET; otherwise it is treated as a local file path. At startup, the app logs each dictionary's version (if present), word count, and SHA256 hash.
 
 ## Components
+
+### `internal/version`
+
+Defines the application's Semantic Version (`MAJOR.MINOR.PATCH`). The canonical version is stored in `internal/version/version.go` as the `Version` variable (initial value `0.1.0`). This is the single source of truth for the application version — the `package.json` version belongs to the Playwright test suite only.
+
+### `AGENTS.md`
+
+Convention file for agent-level instructions. Located at the repository root, it tells AI agents how to bump the version on every application code change. Agents should read this file before making code changes.
 
 ### `internal/dictionary`
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,29 +12,25 @@ import (
 
 	"bottesmo/internal/dictionary"
 	"bottesmo/internal/handlers"
+	"bottesmo/internal/version"
 )
 
 func main() {
+	versionFlag := flag.Bool("version", false, "print version and exit")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("bottesmo v%s\n", version.Version)
+		os.Exit(0)
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	dictSource := os.Getenv("DICT_WORDS_SOURCE")
-	if dictSource == "" {
-		dictSource = filepath.Join(wd, "internal", "dictionary", "words.txt")
-	}
-	if _, err := dictionary.LoadFromSource(dictSource); err != nil {
-		log.Fatal(err)
-	}
-
-	fullDictSource := os.Getenv("DICT_WORDS_FULL_SOURCE")
-	if fullDictSource == "" {
-		fullDictSource = filepath.Join(wd, "internal", "dictionary", "words_full.txt")
-	}
-	if _, err := dictionary.LoadFullFromSource(fullDictSource); err != nil {
-		log.Fatal(err)
-	}
+	loadDict("DICT_WORDS_SOURCE", filepath.Join(wd, "internal", "dictionary", "words.txt"), dictionary.LoadFromSource)
+	loadDict("DICT_WORDS_FULL_SOURCE", filepath.Join(wd, "internal", "dictionary", "words_full.txt"), dictionary.LoadFullFromSource)
 
 	tmplPattern := filepath.Join(wd, "web", "templates", "*.html")
 	if err := handlers.LoadTemplates(tmplPattern); err != nil {
@@ -75,4 +73,14 @@ func main() {
 
 	log.Printf("Bottesmo starting on :%s (Go %s)", port, runtime.Version())
 	log.Fatal(srv.ListenAndServe())
+}
+
+func loadDict(envName, defaultPath string, loader func(string) (dictionary.LoadResult, error)) {
+	source := os.Getenv(envName)
+	if source == "" {
+		source = defaultPath
+	}
+	if _, err := loader(source); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -1,6 +1,7 @@
 replicaCount: 1
 
 image:
+  registry: docker.io
   repository: bnoleau/bottesmo
   tag: latest
   pullPolicy: Always

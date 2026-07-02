@@ -64,3 +64,23 @@ La validation orthographique des mots saisis par le joueur est effectuée côté
 ## Spécifications
 
 Le dossier [`specs/`](../specs/) est la source de vérité pour les spécifications fonctionnelles. Les specs sont organisées par domaine fonctionnel (règles du jeu, modes, API, modèle de données, dictionnaire, frontend, configuration serveur, tests, multi-joueur). L'ancien fichier `game.md` a été supprimé. Tout ajout de fonctionnalité doit mettre à jour ou créer le fichier de spec correspondant.
+
+## Deployment
+
+Le chart Helm se trouve dans `helm/bottesmo/`. L'image Docker est publiée sur Docker Hub : `bnoleau/bottesmo:latest`.
+
+### Commande d'installation
+
+```bash
+helm install bottesmo ./helm/bottesmo \
+  --namespace bottesmo --create-namespace \
+  --set ingress.hosts[0].host=bottesmo.example.com
+```
+
+### Contrainte 1 réplica — IMPORTANT
+
+L'état multijoueur (rooms, joueurs connectés, flux SSE) est stocké **en mémoire dans le pod**. Scaler à N > 1 réplicas sans backend partagé causerait des **rooms fantômes**. La stratégie de déploiement est `Recreate` pour éviter deux pods actifs simultanément.
+
+**Ne pas activer l'autoscaling (HPA) sans avoir d'abord externalisé l'état multijoueur.**
+
+Voir `helm/bottesmo/README.md` pour la documentation complète.

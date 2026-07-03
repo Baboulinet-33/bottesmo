@@ -5,10 +5,31 @@ on:
     branches: [main]
   push:
     branches: [main]
-    tags: ['v*']
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36  # v3.0.2
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'cmd/**'
+              - 'internal/**'
+              - 'web/**'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/docker.yml'
+
   test:
+    needs: [changes]
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,10 +39,12 @@ jobs:
       - run: go test ./... -v
 
   docker:
-    needs: test
+    needs: [test, changes]
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -32,20 +55,38 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract app version
+        id: appver
+        run: |
+          v=$(grep -oP 'Version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+' internal/version/version.go)
+          [ -z "$v" ] && { echo "Version not found"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME || github.repository_owner }}/bottesmo
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.appver.outputs.version }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=pr
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Tag repo with app version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          VERSION: ${{ steps.appver.outputs.version }}
+        run: |
+          tag="v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists, skipping."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "Release ${tag}"
+          git push origin "${tag}"

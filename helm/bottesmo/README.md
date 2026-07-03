@@ -5,7 +5,7 @@ Chart Helm pour déployer **Bottesmo** (jeu Wordle-like en français avec mode m
 ## Prérequis
 
 - Cluster Kubernetes (≥ 1.23)
-- [ingress-nginx](https://kubernetes.github.io/ingress-nginx/) installé dans le cluster
+- [ingress-nginx](https://kubernetes.github.io/ingress-nginx/) installé dans le cluster (ou un contrôleur Gateway API si vous utilisez HTTPRoute)
 - Image Docker Hub disponible : `bnoleau/bottesmo:latest` (le build/push est hors scope de ce chart)
 - `helm` ≥ 3.x installé localement
 
@@ -51,6 +51,21 @@ helm install bottesmo ./helm/bottesmo \
   --set env.DICT_WORDS_FULL_SOURCE=https://exemple.com/words_full.txt
 ```
 
+## Utiliser HTTPRoute (Gateway API)
+
+Pour utiliser [HTTPRoute](https://gateway-api.sigs.k8s.io/api-types/httproute/) à la place de l'Ingress, désactivez l'Ingress et activez HTTPRoute :
+
+```bash
+helm install bottesmo ./helm/bottesmo \
+  --set ingress.enabled=false \
+  --set httproute.enabled=true \
+  --set httproute.parentRefs[0].name=mon-gateway \
+  --set httproute.parentRefs[0].namespace=gateway \
+  --set httproute.hostnames[0]=bottesmo.example.com
+```
+
+Les TLS sont gérés au niveau du Gateway (pas dans l'HTTPRoute lui-même).
+
 ## Activer TLS
 
 ```bash
@@ -80,6 +95,7 @@ La stratégie de déploiement est `Recreate` (plutôt que `RollingUpdate`) pour 
 | `image.pullPolicy` | `Always` | Garantit le repull à chaque déploiement |
 | `service.targetPort` | `3102` | Port interne de l'app |
 | `ingress.enabled` | `true` | Ingress nginx activé par défaut |
+| `httproute.enabled` | `false` | HTTPRoute Gateway API (alternatif à l'Ingress) |
 | `strategy.type` | `Recreate` | Évite deux pods actifs simultanément |
 
 ## Architecture de sécurité

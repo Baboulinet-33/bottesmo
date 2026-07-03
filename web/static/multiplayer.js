@@ -147,7 +147,6 @@ function joinRoom(code, nickname) {
         if (data.state === 'playing') {
             restoreGameState(data);
             showScreen('game');
-            startTimer();
         }
     })
     .catch(err => alert('Erreur de connexion'));
@@ -259,7 +258,6 @@ function setupSSE(roomCode, playerID) {
         const data = JSON.parse(e.data);
         mp.players = data.players;
         showScreen('game');
-        startTimer();
         loadGame();
     });
 
@@ -389,17 +387,6 @@ function updateWordIndicator() {
     }
 }
 
-function startTimer() {
-    const el = document.getElementById('game-timer');
-    if (!el) return;
-    const start = Date.now();
-    setInterval(() => {
-        const elapsed = Math.floor((Date.now() - start) / 1000);
-        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
-        const s = String(elapsed % 60).padStart(2, '0');
-        el.textContent = m + ':' + s;
-    }, 1000);
-}
 
 function copyShareLink() {
     const input = document.getElementById('lobby-share-url');
@@ -453,10 +440,11 @@ function renderRankings(rankings) {
         name.textContent = r.nickname;
         const time = document.createElement('td');
         if (r.finished) {
-            const totalSec = Math.floor(r.time / 1e9);
-            const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
-            const s = String(totalSec % 60).padStart(2, '0');
-            time.textContent = m + ':' + s;
+            const totalMs = Math.floor(r.time / 1e6);
+            const m = Math.floor(totalMs / 60000);
+            const s = String(Math.floor((totalMs % 60000) / 1000)).padStart(2, '0');
+            const ms = String(totalMs % 1000).padStart(3, '0');
+            time.textContent = `${m}:${s}.${ms}`;
         } else {
             time.textContent = '—';
         }

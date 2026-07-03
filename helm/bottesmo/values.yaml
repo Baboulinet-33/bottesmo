@@ -38,6 +38,15 @@ service:
   targetPort: 3102
   sessionAffinity: ClientIP
 
+httproute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+    - name: bottesmo-gateway
+      namespace: gateway
+  hostnames:
+    - bottesmo.local
+
 ingress:
   enabled: true
   className: nginx

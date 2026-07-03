@@ -492,10 +492,6 @@ main {
     gap: 5px;
 }
 
-#game-timer {
-    font-variant-numeric: tabular-nums;
-}
-
 #multi-grid {
     display: flex;
     flex-direction: column;

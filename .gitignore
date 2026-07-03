@@ -1,3 +1,5 @@
 server
 node_modules/
 .envrc
+tmp
+helm/bottesmo/values-*.yaml

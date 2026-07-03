@@ -7,15 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 'stable'
-      - run: go test ./... -v
-
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -35,6 +26,17 @@ jobs:
               - 'Dockerfile'
               - '.dockerignore'
               - '.github/workflows/docker.yml'
+
+  test:
+    needs: [changes]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - run: go test ./... -v
 
   docker:
     needs: [test, changes]

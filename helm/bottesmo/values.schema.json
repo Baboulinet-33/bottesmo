@@ -49,6 +49,30 @@
         "sessionAffinity": { "type": "string", "enum": ["None", "ClientIP"] }
       }
     },
+    "httproute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "annotations": { "type": "object" },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "namespace": { "type": "string" },
+              "sectionName": { "type": "string" },
+              "port": { "type": "integer" }
+            }
+          }
+        },
+        "hostnames": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
     "ingress": {
       "type": "object",
       "additionalProperties": false,
@@ -113,6 +137,7 @@
     },
     "livenessProbe": { "type": "object" },
     "readinessProbe": { "type": "object" },
+    "startupProbe": { "type": "object" },
     "nodeSelector": { "type": "object" },
     "tolerations": { "type": "array" },
     "affinity": { "type": "object" },

@@ -38,6 +38,15 @@ service:
   targetPort: 3102
   sessionAffinity: ClientIP
 
+httproute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+    - name: bottesmo-gateway
+      namespace: gateway
+  hostnames:
+    - bottesmo.local
+
 ingress:
   enabled: true
   className: nginx
@@ -81,6 +90,14 @@ readinessProbe:
   periodSeconds: 10
   timeoutSeconds: 3
   failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /api/status
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 30
 
 nodeSelector: {}
 tolerations: []

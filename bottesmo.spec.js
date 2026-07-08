@@ -433,6 +433,85 @@ test.describe('Multiplayer API', () => {
       expect(Array.isArray(wr.results)).toBe(true);
     }
   });
+
+  test('9. Results screen persists after player-finished SSE broadcast', async ({ page, request }) => {
+    // Create room with Alice (solo — only one player so the game can start)
+    const createResp = await request.post(`${BASE}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Alice' }
+    });
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const aliceID = createData.playerID;
+
+    // Start and join the game so we can retrieve word targets for the API guesses
+    const startResp = await request.post(`${BASE}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    expect(startResp.ok()).toBe(true);
+
+    const joinResp = await request.post(`${BASE}/api/multiplayer/join`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    const joinData = await joinResp.json();
+    expect(joinData.wordGames.length).toBe(2);
+
+    // Submit all winning guesses via API (simulates Alice finishing)
+    let lastGuessData = null;
+    for (let i = 0; i < 2; i++) {
+      const target = joinData.wordGames[i].target;
+      const guessResp = await request.post(`${BASE}/api/multiplayer/guess`, {
+        data: { roomCode: code, playerID: aliceID, word: target }
+      });
+      expect(guessResp.ok()).toBe(true);
+      lastGuessData = await guessResp.json();
+    }
+
+    // Navigate to /multiplayer and inject state via evaluate to verify DOM behaviour
+    await page.goto(`${BASE}/multiplayer`);
+
+    // Inject the rankings from the HTTP response directly into renderRankings (simulating what
+    // the real client does after POST /api/multiplayer/guess returns playerFinished=true)
+    const rankings = lastGuessData.rankings;
+    await page.evaluate((rankings) => {
+      // Show the results screen
+      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+      const resultsScreen = document.getElementById('screen-results');
+      if (resultsScreen) resultsScreen.style.display = '';
+
+      // Call renderRankings with the full payload (includes wordResults)
+      if (typeof renderRankings === 'function') {
+        renderRankings(rankings);
+      }
+    }, rankings);
+
+    // Assert results screen is visible
+    const resultsScreen = page.locator('#screen-results');
+    await expect(resultsScreen).toBeVisible();
+
+    // Assert player tabs and word results are populated
+    await expect(page.locator('#player-tabs')).not.toBeEmpty();
+    await expect(page.locator('#player-word-results')).not.toBeEmpty();
+    const initialTabCount = await page.locator('#player-tabs .player-tab').count();
+    expect(initialTabCount).toBeGreaterThanOrEqual(1);
+    const initialCardCount = await page.locator('#player-word-results .word-result').count();
+    expect(initialCardCount).toBeGreaterThanOrEqual(1);
+
+    // Now simulate the `player-finished` SSE broadcast arriving with stripped rankings
+    // (no wordResults) — this is what used to wipe the detail view
+    const strippedRankings = rankings.map(r => ({ ...r, wordResults: undefined }));
+    await page.evaluate((strippedRankings) => {
+      if (typeof renderRankings === 'function') {
+        renderRankings(strippedRankings);
+      }
+    }, strippedRankings);
+
+    // Re-assert — under the old code tabs/word-results would be empty; with the fix they persist
+    await expect(resultsScreen).toBeVisible();
+    const tabCountAfter = await page.locator('#player-tabs .player-tab').count();
+    expect(tabCountAfter).toBeGreaterThanOrEqual(1);
+    const cardCountAfter = await page.locator('#player-word-results .word-result').count();
+    expect(cardCountAfter).toBeGreaterThanOrEqual(1);
+  });
 });
 
 test.describe('GET /api/status', () => {

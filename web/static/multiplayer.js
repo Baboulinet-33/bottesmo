@@ -269,6 +269,9 @@ function setupSSE(roomCode, playerID) {
 
     mp.eventSource.addEventListener('player-finished', (e) => {
         const data = JSON.parse(e.data);
+        // Rankings here are stripped (no wordResults) for fairness to still-playing
+        // players — renderRankings treats this as a leaderboard-only update and
+        // preserves any existing detail view (see renderRankings).
         renderRankings(data.rankings);
         if (data.playerID === mp.playerID) {
             showScreen('results');
@@ -457,13 +460,15 @@ function renderRankings(rankings) {
         tbody.appendChild(tr);
     });
 
+    // Skip tab/detail update on leaderboard-only broadcasts (no wordResults).
+    // This preserves any existing word grids between `player-finished` and `game-over`.
+    const playersWithResults = rankings.filter(r => r.wordResults && r.wordResults.length > 0);
+    if (playersWithResults.length === 0) return;
+
     const tabsContainer = document.getElementById('player-tabs');
     const resultsContainer = document.getElementById('player-word-results');
     tabsContainer.innerHTML = '';
     resultsContainer.innerHTML = '';
-
-    const playersWithResults = rankings.filter(r => r.wordResults && r.wordResults.length > 0);
-    if (playersWithResults.length === 0) return;
 
     playersWithResults.forEach((r, idx) => {
         const tab = document.createElement('button');

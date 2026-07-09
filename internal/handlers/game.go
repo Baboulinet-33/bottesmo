@@ -89,6 +89,16 @@ func (m *GameManager) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (m *GameManager) SettingsPageHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	templates.ExecuteTemplate(w, "layout.html", map[string]any{
+		"Page": "settings",
+	})
+}
+
 type dictStatus struct {
 	Name      string `json:"name"`
 	Version   string `json:"version"`

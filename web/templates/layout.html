@@ -9,6 +9,7 @@
 <body>
     <header>
         <h1><a href="/">Bottesmo</a></h1>
+        <a href="/settings" id="settings-link" aria-label="Paramètres">⚙</a>
         <button id="theme-toggle" aria-label="Changer de thème">☀️</button>
     </header>
     <main>
@@ -23,6 +24,8 @@
         {{template "game.html" .}}
         {{else if eq .Page "multiplayer"}}
         {{template "multiplayer.html" .}}
+        {{else if eq .Page "settings"}}
+        {{template "settings.html" .}}
         {{end}}
     </main>
     <script src="/static/app.js"></script>

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"bottesmo/internal/dictionary"
@@ -69,6 +70,30 @@ func TestStatusHandler_Returns200(t *testing.T) {
 	}
 	if len(dicts) != 2 {
 		t.Fatalf("expected 2 dictionaries, got %d", len(dicts))
+	}
+}
+
+func TestSettingsPageHandler(t *testing.T) {
+	if err := LoadTemplates("../../web/templates/*.html"); err != nil {
+		t.Fatalf("LoadTemplates failed: %v", err)
+	}
+
+	mgr := NewGameManager()
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	rec := httptest.NewRecorder()
+
+	mgr.SettingsPageHandler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", rec.Code)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "Param") {
+		t.Error("expected body to contain 'Param' (Paramètres)")
+	}
+	if !strings.Contains(body, "palette-grid") {
+		t.Error("expected body to contain 'palette-grid'")
 	}
 }
 

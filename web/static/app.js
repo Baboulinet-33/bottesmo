@@ -2,6 +2,166 @@ let gameState = null;
 
 const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult":""}';
 
+// ===== Letter Palette Management =====
+
+const LETTER_PALETTES = [
+    {
+        id: 'original',
+        name: 'Bottesmo (défaut)',
+        colors: {
+            '--correct': '#10b981',
+            '--correct-contrast': '#ffffff',
+            '--present': '#f59e0b',
+            '--present-contrast': '#1e293b',
+            '--absent': '#6b7280',
+            '--absent-contrast': '#ffffff',
+            '--kb-key-absent-bg': '#374151',
+            '--kb-key-absent-text': '#9ca3af'
+        }
+    },
+    {
+        id: 'wordle',
+        name: 'Classique Wordle',
+        colors: {
+            '--correct': '#538d4e',
+            '--correct-contrast': '#ffffff',
+            '--present': '#b59f3b',
+            '--present-contrast': '#ffffff',
+            '--absent': '#3a3a3c',
+            '--absent-contrast': '#ffffff',
+            '--kb-key-absent-bg': '#3a3a3c',
+            '--kb-key-absent-text': '#ffffff'
+        }
+    },
+    {
+        id: 'ocean',
+        name: 'Océan',
+        colors: {
+            '--correct': '#0ea5e9',
+            '--correct-contrast': '#ffffff',
+            '--present': '#06b6d4',
+            '--present-contrast': '#ffffff',
+            '--absent': '#1e40af',
+            '--absent-contrast': '#bfdbfe',
+            '--kb-key-absent-bg': '#1e3a5f',
+            '--kb-key-absent-text': '#93c5fd'
+        }
+    },
+    {
+        id: 'sunset',
+        name: 'Coucher de soleil',
+        colors: {
+            '--correct': '#f97316',
+            '--correct-contrast': '#ffffff',
+            '--present': '#fbbf24',
+            '--present-contrast': '#1c1917',
+            '--absent': '#7c3aed',
+            '--absent-contrast': '#ede9fe',
+            '--kb-key-absent-bg': '#4c1d95',
+            '--kb-key-absent-text': '#ddd6fe'
+        }
+    },
+    {
+        id: 'foret',
+        name: 'Forêt',
+        colors: {
+            '--correct': '#4d7c0f',
+            '--correct-contrast': '#f7fee7',
+            '--present': '#ca8a04',
+            '--present-contrast': '#fefce8',
+            '--absent': '#78350f',
+            '--absent-contrast': '#fef3c7',
+            '--kb-key-absent-bg': '#422006',
+            '--kb-key-absent-text': '#d97706'
+        }
+    },
+    {
+        id: 'neon',
+        name: 'Néon',
+        colors: {
+            '--correct': '#39ff14',
+            '--correct-contrast': '#000000',
+            '--present': '#ff00ff',
+            '--present-contrast': '#000000',
+            '--absent': '#111111',
+            '--absent-contrast': '#39ff14',
+            '--kb-key-absent-bg': '#0a0a0a',
+            '--kb-key-absent-text': '#39ff14'
+        }
+    },
+    {
+        id: 'mono',
+        name: 'Monochrome',
+        colors: {
+            '--correct': '#111111',
+            '--correct-contrast': '#ffffff',
+            '--present': '#555555',
+            '--present-contrast': '#ffffff',
+            '--absent': '#aaaaaa',
+            '--absent-contrast': '#000000',
+            '--kb-key-absent-bg': '#999999',
+            '--kb-key-absent-text': '#000000'
+        }
+    },
+    {
+        id: 'pastel',
+        name: 'Pastel',
+        colors: {
+            '--correct': '#86efac',
+            '--correct-contrast': '#14532d',
+            '--present': '#fdba74',
+            '--present-contrast': '#7c2d12',
+            '--absent': '#c4b5fd',
+            '--absent-contrast': '#3b0764',
+            '--kb-key-absent-bg': '#ddd6fe',
+            '--kb-key-absent-text': '#4c1d95'
+        }
+    },
+    {
+        id: 'contraste',
+        name: 'Contraste élevé',
+        colors: {
+            '--correct': '#00ff00',
+            '--correct-contrast': '#000000',
+            '--present': '#ffff00',
+            '--present-contrast': '#000000',
+            '--absent': '#ffffff',
+            '--absent-contrast': '#000000',
+            '--kb-key-absent-bg': '#ffffff',
+            '--kb-key-absent-text': '#000000'
+        }
+    },
+    {
+        id: 'automne',
+        name: 'Automne',
+        colors: {
+            '--correct': '#b45309',
+            '--correct-contrast': '#fffbeb',
+            '--present': '#d97706',
+            '--present-contrast': '#1c1917',
+            '--absent': '#57534e',
+            '--absent-contrast': '#fafaf9',
+            '--kb-key-absent-bg': '#292524',
+            '--kb-key-absent-text': '#a8a29e'
+        }
+    }
+];
+
+function getStoredPaletteId() {
+    return localStorage.getItem('bottesmo-letter-palette') || 'original';
+}
+
+function setStoredPaletteId(id) {
+    localStorage.setItem('bottesmo-letter-palette', id);
+}
+
+function applyPalette(id) {
+    const palette = LETTER_PALETTES.find(p => p.id === id) || LETTER_PALETTES[0];
+    for (const [prop, value] of Object.entries(palette.colors)) {
+        document.documentElement.style.setProperty(prop, value);
+    }
+}
+
 // Theme management
 function getPreferredTheme() {
     const saved = localStorage.getItem('bottesmo-theme');
@@ -24,7 +184,9 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', () => {
     const theme = getPreferredTheme();
     applyTheme(theme);
+    applyPalette(getStoredPaletteId());
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+
     const gameDiv = document.getElementById('game');
     if (gameDiv) {
         const mode = gameDiv.dataset.mode;
@@ -40,6 +202,45 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 window.location.href = '/game?mode=' + mode;
             });
+        });
+    }
+
+    const paletteGrid = document.getElementById('palette-grid');
+    if (paletteGrid) {
+        const currentId = getStoredPaletteId();
+        LETTER_PALETTES.forEach(palette => {
+            const card = document.createElement('div');
+            card.className = 'palette-card' + (palette.id === currentId ? ' selected' : '');
+            card.dataset.paletteId = palette.id;
+
+            const name = document.createElement('div');
+            name.className = 'palette-name';
+            name.textContent = palette.name;
+
+            const preview = document.createElement('div');
+            preview.className = 'palette-preview';
+            [
+                ['A', '--correct', '--correct-contrast'],
+                ['B', '--present', '--present-contrast'],
+                ['C', '--absent', '--absent-contrast']
+            ].forEach(([label, bg, fg]) => {
+                const tile = document.createElement('span');
+                tile.className = 'palette-tile';
+                tile.textContent = label;
+                tile.style.backgroundColor = palette.colors[bg];
+                tile.style.color = palette.colors[fg];
+                preview.appendChild(tile);
+            });
+
+            card.appendChild(preview);
+            card.appendChild(name);
+            card.addEventListener('click', () => {
+                setStoredPaletteId(palette.id);
+                applyPalette(palette.id);
+                document.querySelectorAll('.palette-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+            });
+            paletteGrid.appendChild(card);
         });
     }
 });
@@ -155,16 +356,9 @@ function handleLetter(letter) {
     addCursor();
 }
 
-function handleBackspace() {
-    const row = gameState.currentRow;
-    const col = gameState.currentCol;
-
-    if (col <= 0) return;
-
-    const newCol = col - 1;
-    const tile = document.getElementById('tile-' + row + '-' + newCol);
-
-    const foundLetter = gameState.foundLetters.find(fp => fp.position === newCol);
+function restoreTile(row, col) {
+    const tile = document.getElementById('tile-' + row + '-' + col);
+    const foundLetter = gameState.foundLetters.find(fp => fp.position === col);
     if (foundLetter) {
         tile.textContent = foundLetter.letter;
         tile.classList.add('locked', 'correct');
@@ -173,7 +367,14 @@ function handleBackspace() {
         tile.textContent = '';
         tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
     }
+}
 
+function handleBackspace() {
+    const col = gameState.currentCol;
+    if (col <= 0) return;
+
+    const newCol = col - 1;
+    restoreTile(gameState.currentRow, newCol);
     gameState.currentCol = newCol;
     addCursor();
 }
@@ -205,18 +406,8 @@ function enableInput() {
 
 function resetCurrentRow() {
     const row = gameState.currentRow;
-    const wordLength = gameState.wordLength;
-    for (let col = 0; col < wordLength; col++) {
-        const tile = document.getElementById('tile-' + row + '-' + col);
-        const foundLetter = gameState.foundLetters.find(fp => fp.position === col);
-        if (foundLetter) {
-            tile.textContent = foundLetter.letter;
-            tile.classList.add('locked', 'correct');
-            tile.classList.remove('present', 'absent');
-        } else {
-            tile.textContent = '';
-            tile.classList.remove('locked', 'correct', 'submitted', 'present', 'absent');
-        }
+    for (let col = 0; col < gameState.wordLength; col++) {
+        restoreTile(row, col);
     }
     gameState.currentCol = firstUnlockedPosition(0);
     addCursor();

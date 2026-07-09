@@ -392,7 +392,6 @@ function updateWordIndicator() {
     }
 }
 
-
 function copyShareLink() {
     const input = document.getElementById('lobby-share-url');
     input.select();

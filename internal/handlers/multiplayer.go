@@ -176,6 +176,15 @@ func playersInfo(room *game.MultiplayerRoom) []playerInfo {
 	return list
 }
 
+func stripRankings(rankings []game.RankingEntry) []game.RankingEntry {
+	stripped := make([]game.RankingEntry, len(rankings))
+	for i := range rankings {
+		stripped[i] = rankings[i]
+		stripped[i].WordResults = nil
+	}
+	return stripped
+}
+
 // --- Handlers on GameManager ---
 
 func (m *GameManager) MultiplayerPageHandler(w http.ResponseWriter, r *http.Request) {
@@ -355,12 +364,20 @@ func (m *GameManager) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var joinBroadcastData map[string]any
+	if isNewPlayer {
+		joinBroadcastData = map[string]any{"players": playersInfo(room)}
+		if room.State == "playing" {
+			joinBroadcastData["rankings"] = stripRankings(room.GetRankings())
+		}
+	}
+
 	mm.mu.Unlock()
 
 	if isNewPlayer {
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "player-joined",
-			Data:  map[string]any{"players": playersInfo(room)},
+			Data:  joinBroadcastData,
 		})
 	}
 
@@ -470,32 +487,23 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 
 	players := playersInfo(room)
 	roomFinished := room.IsRoomFinished()
+	rankings := room.GetRankings()
 
 	mm.mu.Unlock()
 
 	mm.hub.Broadcast(room.Code, SSEEvent{
 		Event: "progress",
-		Data:  map[string]any{"players": players},
+		Data:  map[string]any{"players": players, "rankings": stripRankings(rankings)},
 	})
-
-	var rankings []game.RankingEntry
-	if resp.PlayerFinished || roomFinished {
-		rankings = room.GetRankings()
-	}
 
 	if resp.PlayerFinished {
 		resp.Rankings = rankings
 
-		strippedRankings := make([]game.RankingEntry, len(rankings))
-		for i := range rankings {
-			strippedRankings[i] = rankings[i]
-			strippedRankings[i].WordResults = nil
-		}
 		mm.hub.Broadcast(room.Code, SSEEvent{
 			Event: "player-finished",
 			Data: map[string]any{
 				"playerID": req.PlayerID,
-				"rankings": strippedRankings,
+				"rankings": stripRankings(rankings),
 			},
 		})
 	}

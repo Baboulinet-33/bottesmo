@@ -635,3 +635,63 @@ test.describe('Theme toggle', () => {
     expect(theme === null || theme === '').toBe(true);
   });
 });
+
+test.describe('Letter palette settings', () => {
+  const BASE_URL = 'http://localhost:3129';
+
+  test('navigating to /settings renders 10 palette cards', async ({ page }) => {
+    await page.goto(`${BASE_URL}/settings`);
+    const cards = page.locator('.palette-card');
+    await expect(cards).toHaveCount(10);
+  });
+
+  test('clicking a palette updates CSS custom property --correct', async ({ page }) => {
+    await page.goto(`${BASE_URL}/settings`);
+    // Click the "wordle" palette card
+    const wordleCard = page.locator('.palette-card[data-palette-id="wordle"]');
+    await wordleCard.click();
+    const correct = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--correct').trim()
+    );
+    expect(correct).toBe('#538d4e');
+  });
+
+  test('selected palette persists after reload', async ({ page }) => {
+    await page.goto(`${BASE_URL}/settings`);
+    await page.locator('.palette-card[data-palette-id="ocean"]').click();
+    await page.reload();
+    const selected = page.locator('.palette-card.selected');
+    await expect(selected).toHaveAttribute('data-palette-id', 'ocean');
+    const correct = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--correct').trim()
+    );
+    expect(correct).toBe('#0ea5e9');
+  });
+
+  test('gear icon is visible on / and /game?mode=solo and links to /settings', async ({ page }) => {
+    await page.goto(`${BASE_URL}/`);
+    const gearHome = page.locator('#settings-link');
+    await expect(gearHome).toBeVisible();
+    await expect(gearHome).toHaveAttribute('href', '/settings');
+
+    await page.goto(`${BASE_URL}/game?mode=solo`);
+    const gearGame = page.locator('#settings-link');
+    await expect(gearGame).toBeVisible();
+    await expect(gearGame).toHaveAttribute('href', '/settings');
+  });
+
+  test('selected palette CSS variables are applied on /game?mode=solo', async ({ page }) => {
+    // Set ocean palette via settings page
+    await page.goto(`${BASE_URL}/settings`);
+    await page.locator('.palette-card[data-palette-id="ocean"]').click();
+
+    // Navigate to solo game — palette should be applied on DOMContentLoaded
+    await page.goto(`${BASE_URL}/game?mode=solo`);
+
+    const correct = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--correct').trim()
+    );
+    // Ocean --correct is #0ea5e9
+    expect(correct).toBe('#0ea5e9');
+  });
+});

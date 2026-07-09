@@ -51,6 +51,7 @@ func main() {
 	http.HandleFunc("/api/game/new", mgr.NewGameHandler)
 	http.HandleFunc("/api/game/guess", mgr.GuessHandler)
 
+	http.HandleFunc("/settings", mgr.SettingsPageHandler)
 	http.HandleFunc("/multiplayer", mgr.MultiplayerPageHandler)
 	http.HandleFunc("/api/multiplayer/create", mgr.CreateRoomHandler)
 	http.HandleFunc("/api/multiplayer/join", mgr.JoinRoomHandler)

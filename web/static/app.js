@@ -144,6 +144,20 @@ const LETTER_PALETTES = [
             '--kb-key-absent-bg': '#292524',
             '--kb-key-absent-text': '#a8a29e'
         }
+    },
+    {
+        id: 'tusmo',
+        name: 'Tusmo',
+        colors: {
+            '--correct': '#DB3A34',
+            '--correct-contrast': '#ffffff',
+            '--present': '#f7b735',
+            '--present-contrast': '#1e293b',
+            '--absent': '#6b7280',
+            '--absent-contrast': '#ffffff',
+            '--kb-key-absent-bg': '#374151',
+            '--kb-key-absent-text': '#9ca3af'
+        }
     }
 ];
 

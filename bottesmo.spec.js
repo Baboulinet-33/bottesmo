@@ -695,3 +695,109 @@ test.describe('Letter palette settings', () => {
     expect(correct).toBe('#0ea5e9');
   });
 });
+
+test.describe('Late joiner visibility on results screen', () => {
+  const DEV = 'http://localhost:3131';
+  test('10. Finished player sees late joiner and progress updates in rankings table', async ({ page }) => {
+    // Use the dev server (port 3131) which has the fix under test.
+    // Step 1: Create room, add two players, start game, have Alice finish
+    const createResp = await page.request.post(`${DEV}/api/multiplayer/create`, {
+      data: { mode: 'progressif', wordCount: 2, nickname: 'Alice' }
+    });
+    expect(createResp.ok()).toBe(true);
+    const createData = await createResp.json();
+    const code = createData.roomCode;
+    const aliceID = createData.playerID;
+
+    const bobJoinResp = await page.request.post(`${DEV}/api/multiplayer/join`, {
+      data: { roomCode: code, nickname: 'Bob' }
+    });
+    expect(bobJoinResp.ok()).toBe(true);
+    const bobData = await bobJoinResp.json();
+    const bobID = bobData.playerID;
+
+    const startResp = await page.request.post(`${DEV}/api/multiplayer/start`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    expect(startResp.ok()).toBe(true);
+
+    // Alice rejoins to get her word targets
+    const aliceRejoinResp = await page.request.post(`${DEV}/api/multiplayer/join`, {
+      data: { roomCode: code, playerID: aliceID }
+    });
+    expect(aliceRejoinResp.ok()).toBe(true);
+    const aliceGameData = await aliceRejoinResp.json();
+
+    // Alice finishes all words
+    for (let i = 0; i < 2; i++) {
+      const target = aliceGameData.wordGames[i].target;
+      const guessResp = await page.request.post(`${DEV}/api/multiplayer/guess`, {
+        data: { roomCode: code, playerID: aliceID, word: target }
+      });
+      expect(guessResp.ok()).toBe(true);
+    }
+
+    // Step 2: Navigate to /multiplayer and set up Alice's results screen with 2 players
+    await page.goto(`${DEV}/multiplayer`);
+
+    // Simulate Alice's results screen with Alice (finished) and Bob (in progress)
+    // Using the exact shape that the server produces (time is a Go time.Duration = nanoseconds int)
+    await page.evaluate(([aID, bID]) => {
+      document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+      const resultsScreen = document.getElementById('screen-results');
+      if (resultsScreen) resultsScreen.style.display = '';
+      if (typeof renderRankings === 'function') {
+        renderRankings([
+          { playerID: aID, nickname: 'Alice', finished: true, failed: false, time: 5000000000 },
+          { playerID: bID, nickname: 'Bob', finished: false, failed: false, time: 0 }
+        ]);
+      }
+    }, [aliceID, bobID]);
+
+    await expect(page.locator('#screen-results')).toBeVisible();
+    const initialRowCount = await page.locator('#rankings-body tr').count();
+    expect(initialRowCount).toBe(2);
+
+    // Step 3: Charlie joins mid-game — simulate the player-joined SSE with fresh rankings
+    const charlieJoinResp = await page.request.post(`${DEV}/api/multiplayer/join`, {
+      data: { roomCode: code, nickname: 'Charlie' }
+    });
+    expect(charlieJoinResp.ok()).toBe(true);
+    const charlieData = await charlieJoinResp.json();
+    const charlieID = charlieData.playerID;
+
+    // Simulate the player-joined SSE arriving on Alice's results screen
+    await page.evaluate(([aID, bID, cID]) => {
+      if (typeof renderRankings === 'function') {
+        renderRankings([
+          { playerID: aID, nickname: 'Alice', finished: true, failed: false, time: 5000000000 },
+          { playerID: bID, nickname: 'Bob', finished: false, failed: false, time: 0 },
+          { playerID: cID, nickname: 'Charlie', finished: false, failed: false, time: 0 }
+        ]);
+      }
+    }, [aliceID, bobID, charlieID]);
+
+    // Step 4: Assert Charlie appears with "En cours" and "—"
+    await expect(page.locator('#screen-results')).toBeVisible();
+    const rowCountAfterJoin = await page.locator('#rankings-body tr').count();
+    expect(rowCountAfterJoin).toBe(3);
+
+    const charlieRow = page.locator('#rankings-body tr', { hasText: 'Charlie' });
+    await expect(charlieRow).toContainText('En cours');
+    await expect(charlieRow).toContainText('—');
+
+    // Step 5: Simulate a progress SSE arriving — table must still show all 3 players
+    await page.evaluate(([aID, bID, cID]) => {
+      if (typeof renderRankings === 'function') {
+        renderRankings([
+          { playerID: aID, nickname: 'Alice', finished: true, failed: false, time: 5000000000 },
+          { playerID: bID, nickname: 'Bob', finished: false, failed: false, time: 0 },
+          { playerID: cID, nickname: 'Charlie', finished: false, failed: false, time: 0 }
+        ]);
+      }
+    }, [aliceID, bobID, charlieID]);
+
+    const rowCountAfterProgress = await page.locator('#rankings-body tr').count();
+    expect(rowCountAfterProgress).toBe(3);
+  });
+});

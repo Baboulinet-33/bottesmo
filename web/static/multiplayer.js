@@ -237,6 +237,7 @@ function setupSSE(roomCode, playerID) {
             updateLobbyPlayers();
         }
         updateProgressPlayers();
+        maybeUpdateRankings(data.rankings);
     });
 
     mp.eventSource.addEventListener('player-left', (e) => {
@@ -265,6 +266,7 @@ function setupSSE(roomCode, playerID) {
         const data = JSON.parse(e.data);
         mp.players = data.players;
         updateProgressPlayers();
+        maybeUpdateRankings(data.rankings);
     });
 
     mp.eventSource.addEventListener('player-finished', (e) => {
@@ -824,6 +826,12 @@ function renderKeyboard() {
             rowDiv.appendChild(btn);
         }
         container.appendChild(rowDiv);
+    }
+}
+
+function maybeUpdateRankings(rankings) {
+    if (rankings && document.getElementById('screen-results').style.display !== 'none') {
+        renderRankings(rankings);
     }
 }
 

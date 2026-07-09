@@ -639,10 +639,10 @@ test.describe('Theme toggle', () => {
 test.describe('Letter palette settings', () => {
   const BASE_URL = 'http://localhost:3129';
 
-  test('navigating to /settings renders 10 palette cards', async ({ page }) => {
+  test('navigating to /settings renders 11 palette cards', async ({ page }) => {
     await page.goto(`${BASE_URL}/settings`);
     const cards = page.locator('.palette-card');
-    await expect(cards).toHaveCount(10);
+    await expect(cards).toHaveCount(11);
   });
 
   test('clicking a palette updates CSS custom property --correct', async ({ page }) => {

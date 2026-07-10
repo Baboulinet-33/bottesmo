@@ -6,7 +6,7 @@ Le jeu utilise deux fichiers de mots :
 
 | Fichier | Rôle | Taille |
 |---------|------|--------|
-| `words.txt` | Mots cibles (candidats pour daily/solo) | 50 mots |
+| `words.txt` | Mots cibles (candidats pour daily/solo) | 11 mots |
 | `words_full.txt` | Dictionnaire complet de validation | ~280 000 mots |
 
 Les mots cibles ont une longueur de **6 à 10 lettres**.

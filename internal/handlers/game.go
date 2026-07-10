@@ -60,10 +60,16 @@ func LoadTemplates(pattern string) error {
 	return err
 }
 
-func (m *GameManager) generateID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
+func generateRandomHex(n int) string {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand.Read failed: " + err.Error())
+	}
 	return hex.EncodeToString(b)
+}
+
+func (m *GameManager) generateID() string {
+	return generateRandomHex(8)
 }
 
 func (m *GameManager) ensureDaily() {

@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -99,9 +97,7 @@ type MultiplayerManager struct {
 }
 
 func (mm *MultiplayerManager) generateToken() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return hex.EncodeToString(b)
+	return generateRandomHex(16)
 }
 
 func NewMultiplayerManager() *MultiplayerManager {

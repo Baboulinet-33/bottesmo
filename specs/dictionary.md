@@ -40,4 +40,4 @@ Longueur choisie uniformément parmi les longueurs disponibles. Mot choisi aléa
 
 ## Validation des mots
 
-La validation orthographique des mots saisis par le joueur est effectuée côté client via **Typo.js** (dictionnaire Hunspell français). Le serveur ne valide que la longueur, la première lettre et la correspondance avec les mots déjà existants dans le dictionnaire.
+La validation orthographique des mots saisis par le joueur est effectuée côté serveur via la dictionnaire `words_full.txt` ou pointé par la variable d'environnement **DICT_WORDS_FULL_SOURCE**. Le serveur valide la longueur, la première lettre et la correspondance avec les mots déjà existants dans le dictionnaire.

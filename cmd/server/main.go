@@ -1,19 +1,24 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"time"
 
 	"bottesmo/internal/dictionary"
 	"bottesmo/internal/handlers"
 	"bottesmo/internal/version"
 )
+
+const defaultDrainTimeout = 30 * time.Second
 
 func main() {
 	versionFlag := flag.Bool("version", false, "print version and exit")
@@ -39,8 +44,10 @@ func main() {
 
 	mgr := handlers.NewGameManager()
 
-	go handlers.CleanupSessions()
-	go mgr.MultiplayerManager().CleanupRooms()
+	ctx, shutdownCancel := context.WithCancel(context.Background())
+
+	go handlers.CleanupSessions(ctx)
+	go mgr.MultiplayerManager().CleanupRooms(ctx)
 
 	fs := http.FileServer(http.Dir(filepath.Join(wd, "web", "static")))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
@@ -73,8 +80,37 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Printf("Bottesmo starting on :%s (Go %s)", port, runtime.Version())
-	log.Fatal(srv.ListenAndServe())
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("Bottesmo starting on :%s (Go %s)", port, runtime.Version())
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	<-quit
+	log.Println("Shutting down server...")
+
+	drainTimeout := getDrainTimeout()
+	drainCtx, cancel := context.WithTimeout(context.Background(), drainTimeout)
+	defer cancel()
+
+	shutdownCancel()
+
+	if err := srv.Shutdown(drainCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+}
+
+func getDrainTimeout() time.Duration {
+	if v := os.Getenv("DRAIN_TIMEOUT"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return defaultDrainTimeout
 }
 
 func loadDict(envName, defaultPath string, loader func(string) (dictionary.LoadResult, error)) {

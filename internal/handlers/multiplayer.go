@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -111,16 +112,20 @@ func NewMultiplayerManager() *MultiplayerManager {
 	}
 }
 
-func (mm *MultiplayerManager) CleanupRooms() {
+func (mm *MultiplayerManager) CleanupRooms(ctx context.Context) {
 	for {
-		time.Sleep(5 * time.Minute)
-		mm.mu.Lock()
-		for code, room := range mm.rooms {
-			if time.Since(room.CreatedAt) > time.Hour {
-				delete(mm.rooms, code)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Minute):
+			mm.mu.Lock()
+			for code, room := range mm.rooms {
+				if time.Since(room.CreatedAt) > time.Hour {
+					delete(mm.rooms, code)
+				}
 			}
+			mm.mu.Unlock()
 		}
-		mm.mu.Unlock()
 	}
 }
 

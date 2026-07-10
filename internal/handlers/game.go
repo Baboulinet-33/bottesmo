@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -299,15 +300,19 @@ func (m *GameManager) MultiplayerManager() *MultiplayerManager {
 	return m.multi
 }
 
-func CleanupSessions() {
+func CleanupSessions(ctx context.Context) {
 	for {
-		time.Sleep(5 * time.Minute)
-		mu.Lock()
-		for id, sess := range sessions {
-			if time.Since(sess.last) > time.Hour {
-				delete(sessions, id)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Minute):
+			mu.Lock()
+			for id, sess := range sessions {
+				if time.Since(sess.last) > time.Hour {
+					delete(sessions, id)
+				}
 			}
+			mu.Unlock()
 		}
-		mu.Unlock()
 	}
 }

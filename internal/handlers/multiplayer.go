@@ -557,27 +557,40 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	http.NewResponseController(w).SetWriteDeadline(time.Time{})
-
 	ch := mm.hub.Subscribe(roomCode, playerID)
 	defer mm.hub.Unsubscribe(roomCode, playerID)
 
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	rc := http.NewResponseController(w)
 	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():
 			mm.removePlayerFromRoom(roomCode, playerID)
 			return
+		case <-heartbeat.C:
+			rc.SetWriteDeadline(time.Now().Add(30 * time.Second))
+			if _, err := fmt.Fprintf(w, ":heartbeat\n\n"); err != nil {
+				log.Printf("SSE heartbeat write error: %v", err)
+				return
+			}
+			flusher.Flush()
 		case event, ok := <-ch:
 			if !ok {
 				return
 			}
+			rc.SetWriteDeadline(time.Now().Add(30 * time.Second))
 			data, err := json.Marshal(event.Data)
 			if err != nil {
 				log.Printf("SSE marshal error: %v", err)
-				continue
+				return
 			}
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Event, string(data))
+			if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Event, string(data)); err != nil {
+				log.Printf("SSE write error: %v", err)
+				return
+			}
 			flusher.Flush()
 		}
 	}

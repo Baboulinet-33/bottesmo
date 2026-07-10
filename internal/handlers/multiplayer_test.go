@@ -2,12 +2,16 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"bottesmo/internal/dictionary"
 	"bottesmo/internal/game"
@@ -301,4 +305,220 @@ func TestProgressBroadcast_IncludesRankings(t *testing.T) {
 			t.Errorf("WordResults should be nil on progress broadcast for player %s", r.PlayerID)
 		}
 	}
+}
+
+func TestSSEHandler_ContextCancellation_CleansUp(t *testing.T) {
+	setupMultiTestDicts(t)
+	gm := newTestGameManager()
+
+	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		gm.SSEHandler(w, req)
+		close(done)
+	}()
+
+	// Let the handler start and subscribe
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify player is in the room
+	gm.multi.mu.RLock()
+	room := gm.multi.rooms[roomCode]
+	if _, exists := room.Players[creatorID]; !exists {
+		gm.multi.mu.RUnlock()
+		t.Fatal("player should exist in room before cancellation")
+	}
+	gm.multi.mu.RUnlock()
+
+	// Cancel context
+	cancel()
+
+	// Wait for handler to finish
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSEHandler did not return after context cancellation")
+	}
+
+	// Verify player was removed from the room
+	gm.multi.mu.RLock()
+	room, ok := gm.multi.rooms[roomCode]
+	if ok {
+		if _, exists := room.Players[creatorID]; exists {
+			t.Error("player should have been removed from room after context cancellation")
+		}
+	}
+	gm.multi.mu.RUnlock()
+}
+
+func TestSSEHandler_WriteError_CleansUp(t *testing.T) {
+	setupMultiTestDicts(t)
+	gm := newTestGameManager()
+
+	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
+
+	fw := &failingWriter{
+		header: make(http.Header),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
+	w := &sseResponseWriter{ResponseWriter: fw, flusher: fw}
+
+	done := make(chan struct{})
+	go func() {
+		gm.SSEHandler(w, req)
+		close(done)
+	}()
+
+	// Let the handler start and subscribe
+	time.Sleep(50 * time.Millisecond)
+
+	// Broadcast an event to trigger a write (which will fail)
+	gm.multi.hub.Broadcast(roomCode, SSEEvent{
+		Event: "test",
+		Data:  map[string]any{"hello": "world"},
+	})
+
+	// Wait for handler to finish
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSEHandler did not return after write error")
+	}
+
+	// Verify player was unsubscribed from hub
+	gm.multi.hub.mu.RLock()
+	_, exists := gm.multi.hub.rooms[roomCode][creatorID]
+	gm.multi.hub.mu.RUnlock()
+	if exists {
+		t.Error("player should have been unsubscribed from hub after write error")
+	}
+}
+
+func TestSSEHandler_ChannelClose_CleansUp(t *testing.T) {
+	setupMultiTestDicts(t)
+	gm := newTestGameManager()
+
+	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
+
+	done := make(chan struct{})
+	go func() {
+		gm.SSEHandler(w, req)
+		close(done)
+	}()
+
+	// Let the handler start and subscribe
+	time.Sleep(50 * time.Millisecond)
+
+	// Close the hub channel for this player
+	gm.multi.hub.mu.Lock()
+	if ch, ok := gm.multi.hub.rooms[roomCode][creatorID]; ok {
+		close(ch)
+	}
+	gm.multi.hub.mu.Unlock()
+
+	// Wait for handler to finish
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSEHandler did not return after channel close")
+	}
+}
+
+func TestSSEHandler_HeartbeatSent(t *testing.T) {
+	setupMultiTestDicts(t)
+	gm := newTestGameManager()
+
+	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
+
+	fw := &slowFlushWriter{
+		header: make(http.Header),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
+	w := &sseResponseWriter{ResponseWriter: fw, flusher: fw}
+
+	done := make(chan struct{})
+	go func() {
+		gm.SSEHandler(w, req)
+		close(done)
+	}()
+
+	// Let the handler start
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify the handler is running (not returned yet)
+	select {
+	case <-done:
+		t.Fatal("SSEHandler returned prematurely")
+	default:
+	}
+
+	// Verify the handler subscribed to the hub
+	gm.multi.hub.mu.RLock()
+	_, subscribed := gm.multi.hub.rooms[roomCode][creatorID]
+	gm.multi.hub.mu.RUnlock()
+	if !subscribed {
+		t.Error("player should be subscribed to hub")
+	}
+
+	// Close the channel to stop the handler
+	gm.multi.hub.mu.Lock()
+	if ch, ok := gm.multi.hub.rooms[roomCode][creatorID]; ok {
+		close(ch)
+	}
+	gm.multi.hub.mu.Unlock()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("SSEHandler did not return")
+	}
+}
+
+// failingWriter is a ResponseWriter that fails on every Write call.
+type failingWriter struct {
+	header http.Header
+}
+
+func (f *failingWriter) Header() http.Header         { return f.header }
+func (f *failingWriter) Write(b []byte) (int, error) { return 0, errors.New("write failed") }
+func (f *failingWriter) WriteHeader(statusCode int)  {}
+func (f *failingWriter) Flush()                      {}
+
+// slowFlushWriter is a ResponseWriter that accepts writes but never flushes
+// (used for heartbeat test where we just need the handler to start).
+type slowFlushWriter struct {
+	header http.Header
+	writes [][]byte
+	mu     sync.Mutex
+}
+
+func (f *slowFlushWriter) Header() http.Header { return f.header }
+func (f *slowFlushWriter) Write(b []byte) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.writes = append(f.writes, b)
+	return len(b), nil
+}
+func (f *slowFlushWriter) WriteHeader(statusCode int) {}
+func (f *slowFlushWriter) Flush()                     {}
+
+// sseResponseWriter wraps a ResponseWriter to provide Flusher support.
+type sseResponseWriter struct {
+	http.ResponseWriter
+	flusher http.Flusher
+}
+
+func (w *sseResponseWriter) Flush() {
+	w.flusher.Flush()
 }

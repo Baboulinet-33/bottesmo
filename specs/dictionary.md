@@ -2,7 +2,7 @@
 
 ## Fichiers
 
-Le jeu utilise deux fichiers de mots :
+Le jeu utilise deux fichiers de mots (attention fichiers de démo) :
 
 | Fichier | Rôle | Taille |
 |---------|------|--------|
@@ -10,6 +10,10 @@ Le jeu utilise deux fichiers de mots :
 | `words_full.txt` | Dictionnaire complet de validation | ~280 000 mots |
 
 Les mots cibles ont une longueur de **6 à 10 lettres**.
+
+Il est possible de paramétrer les dictionnaires avec les variables d'environnements suivante (voir [Variables d'environnement](specs/env.md)):
+- DICT_WORDS_SOURCE
+- DICT_WORDS_FULL_SOURCE
 
 ## Indexation par longueur
 

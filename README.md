@@ -28,7 +28,7 @@ go test ./... -v
 
 ## Modifier le dictionnaire
 
-Le fichier `words.txt` à la racine du projet est un lien symbolique vers `internal/dictionary/words.txt`. Vous pouvez modifier l'un ou l'autre.
+Le dictionnaire est contenu fichier `internal/dictionary/words.txt`.
 
 Le dictionnaire est un fichier texte avec un mot par ligne, en majuscules :
 
@@ -57,6 +57,7 @@ Les spécifications fonctionnelles sont organisées par domaine dans le dossier 
 - [API](specs/api.md)
 - [Modèle de données](specs/data-model.md)
 - [Dictionnaire](specs/dictionary.md)
+- [Variables d'environnement](specs/env.md)
 - [Frontend](specs/frontend.md)
 - [Configuration serveur](specs/server-config.md)
 - [Tests](specs/testing.md)

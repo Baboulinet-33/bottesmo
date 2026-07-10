@@ -1,6 +1,12 @@
 let gameState = null;
 
 const DEFAULT_STATS = '{"played":0,"won":0,"streak":0,"maxStreak":0,"lastResult":""}';
+const STATUSES = ['correct', 'present', 'absent'];
+const KEYBOARD_ROWS = [
+    ['A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M'],
+    ['Enter', 'W', 'X', 'C', 'V', 'B', 'N', 'Backspace']
+];
 
 // ===== Letter Palette Management =====
 
@@ -510,8 +516,7 @@ function updateGrid(row, results) {
         const r = results[col];
         tile.textContent = String.fromCharCode(r.Letter);
 
-        const statusClasses = ['correct', 'present', 'absent'];
-        const statusClass = statusClasses[r.Status] || 'absent';
+        const statusClass = STATUSES[r.Status] || 'absent';
 
         setTimeout(() => {
             tile.classList.add('submitted', statusClass);
@@ -528,13 +533,12 @@ function updateKeyboard(results) {
         }
     }
 
-    const statusClasses = ['correct', 'present', 'absent'];
     document.querySelectorAll('.kb-key').forEach(key => {
         const letter = key.dataset.key;
         const status = gameState.letterStatuses[letter];
         key.classList.remove('correct', 'present', 'absent');
         if (status !== undefined) {
-            key.classList.add(statusClasses[status]);
+            key.classList.add(STATUSES[status]);
         }
     });
 }
@@ -543,13 +547,7 @@ function renderKeyboard() {
     const container = document.getElementById('keyboard');
     container.innerHTML = '';
 
-    const rows = [
-        ['A', 'Z', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-        ['Q', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M'],
-        ['Enter', 'W', 'X', 'C', 'V', 'B', 'N', 'Backspace']
-    ];
-
-    for (const row of rows) {
+    for (const row of KEYBOARD_ROWS) {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'kb-row';
 

@@ -3,7 +3,7 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testMatch: ['bottesmo.spec.js', 'multiplayer_restart.spec.js'],
   use: {
-    baseURL: 'http://localhost:3118',
+    baseURL: 'http://localhost:3130',
     headless: true,
   },
   timeout: 30000,

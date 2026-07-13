@@ -13,20 +13,25 @@ bottesmo/
 │   │   └── dictionary_test.go
 │   ├── game/
 │   │   ├── game.go
-│   │   └── game_test.go
+│   │   ├── game_test.go
+│   │   └── multiplayer.go
 │   ├── handlers/
-│   │   └── game.go
+│   │   ├── game.go
+│   │   ├── multiplayer.go
+│   │   └── multiplayer_test.go
 │   └── version/
 │       └── version.go
 ├── web/
 │   ├── templates/
 │   │   ├── layout.html
-│   │   └── game.html
+│   │   ├── game.html
+│   │   └── multiplayer.html
 │   └── static/
 │       ├── lib/
 │       │   └── typo/          # Typo.js + fr_FR Hunspell dictionary
 │       ├── style.css
-│       └── app.js
+│       ├── app.js
+│       └── multiplayer.js
 ├── words.txt
 └── go.mod
 ```

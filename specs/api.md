@@ -23,10 +23,10 @@
 | Méthode | Chemin | Description |
 |---------|--------|-------------|
 | GET | `/multiplayer` | Page multi-joueur. |
-| POST | `/api/multiplayer/room/create` | Crée une room. Body : `{ mode, wordCount, nickname }`. Réponse : `{ roomCode, shareURL, playerID, token }`. |
-| POST | `/api/multiplayer/room/join` | Rejoint une room. Body : `{ roomCode, nickname, playerID? }`. Réponse : `{ playerID, token, roomCode, mode, wordCount, state, creatorID, players }`. |
-| POST | `/api/multiplayer/room/start` | Démarre la partie (créateur seulement). Body : `{ roomCode, playerID }`. |
+| POST | `/api/multiplayer/create` | Crée une room. Body : `{ mode, wordCount, nickname }`. Réponse : `{ roomCode, shareURL, playerID, token }`. |
+| POST | `/api/multiplayer/join` | Rejoint une room. Body : `{ roomCode, nickname, playerID? }`. Réponse : `{ playerID, token, roomCode, mode, wordCount, state, creatorID, players }`. |
+| POST | `/api/multiplayer/start` | Démarre la partie (créateur seulement). Body : `{ roomCode, playerID }`. |
 | POST | `/api/multiplayer/guess` | Soumet une proposition multi-joueur. Body : `{ roomCode, playerID, word }`. |
-| POST | `/api/multiplayer/room/leave` | Quitte une room. Body : `{ roomCode, playerID }`. |
-| POST | `/api/multiplayer/room/restart` | Redémarre la partie (créateur seulement, avec token). Body : `{ roomCode, playerID, token }`. |
+| POST | `/api/multiplayer/leave` | Quitte une room. Body : `{ roomCode, playerID }`. |
+| POST | `/api/multiplayer/restart` | Redémarre la partie (créateur seulement, avec token). Body : `{ roomCode, playerID, token }`. |
 | GET | `/api/multiplayer/events?room=&player=` | SSE (Server-Sent Events) pour les mises à jour temps réel. |

@@ -2,9 +2,10 @@
 
 Jeu de mots inspiré de Wordle, en français.
 
-Deux modes de jeu :
+Trois modes de jeu :
 - **Mot du jour** : un mot identique pour tous les joueurs, changé chaque jour.
 - **Solo** : un mot aléatoire à chaque partie.
+- **Multijoueur** : créez une room et affrontez vos amis en temps réel via SSE. Accédez à la page multijoueur sur `/multiplayer`, créez ou rejoignez une room avec un code, puis jouez en parallèle.
 
 ## Lancer le serveur
 

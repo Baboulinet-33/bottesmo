@@ -9,6 +9,7 @@ function newMp() {
         foundLetters: [], lockedPositions: new Set(), letterStatuses: {},
         attempts: [], won: false, gameOver: false, wordLength: 0,
         firstLetter: '', maxTries: 6, guessResults: [], eventSource: null,
+        leftRoom: false,
     };
 }
 
@@ -300,7 +301,9 @@ function setupSSE(roomCode, playerID) {
     });
 
     mp.eventSource.onerror = () => {
-        setTimeout(() => setupSSE(roomCode, playerID), 3000);
+        if (!mp.leftRoom) {
+            setTimeout(() => setupSSE(roomCode, playerID), 3000);
+        }
     };
 }
 
@@ -399,6 +402,7 @@ function copyShareLink() {
 }
 
 function leaveRoom() {
+    mp.leftRoom = true;
     if (mp.roomCode && mp.playerID) {
         fetch('/api/multiplayer/leave', {
             method: 'POST',
@@ -688,7 +692,7 @@ function submitGuess(word) {
                 showMultiMessage(isWon ? 'Mot trouvé !' : 'Mot échoué', isWon ? 'win' : 'lose');
                 setTimeout(() => {
                     mp.currentWordIdx = data.currentWordIdx;
-                    loadNextWord();
+                    loadGame();
                     enableInput();
                 }, 1500);
             }
@@ -702,10 +706,6 @@ function submitGuess(word) {
         btn.disabled = false;
         addCursor();
     });
-}
-
-function loadNextWord() {
-    loadGame();
 }
 
 function enableInput() {

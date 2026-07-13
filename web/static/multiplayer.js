@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 roomCode: mp.roomCode,
                 playerID: mp.playerID
             })], { type: 'application/json' });
-            navigator.sendBeacon('/api/multiplayer/leave', blob);
+            navigator.sendBeacon('/api/multiplayer/leave?token=' + encodeURIComponent(mp.token), blob);
         }
     });
 });
@@ -203,7 +203,7 @@ function startGame() {
 
     fetch('/api/multiplayer/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
         body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
     })
     .then(res => res.json())
@@ -228,7 +228,7 @@ function setupSSE(roomCode, playerID) {
         mp.eventSource.close();
     }
 
-    const url = '/api/multiplayer/events?room=' + encodeURIComponent(roomCode) + '&player=' + encodeURIComponent(playerID);
+    const url = '/api/multiplayer/events?room=' + encodeURIComponent(roomCode) + '&player=' + encodeURIComponent(playerID) + '&token=' + encodeURIComponent(mp.token);
     mp.eventSource = new EventSource(url);
 
     mp.eventSource.addEventListener('player-joined', (e) => {
@@ -406,7 +406,7 @@ function leaveRoom() {
     if (mp.roomCode && mp.playerID) {
         fetch('/api/multiplayer/leave', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
             body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
         }).catch(() => {});
     }
@@ -422,8 +422,8 @@ function leaveRoom() {
 function newGame() {
     fetch('/api/multiplayer/restart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID, token: mp.token })
+        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
+        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
     })
     .then(res => res.json())
     .then(data => {
@@ -651,7 +651,7 @@ function submitGuess(word) {
 
     fetch('/api/multiplayer/guess', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
         body: JSON.stringify({
             roomCode: mp.roomCode,
             playerID: mp.playerID,

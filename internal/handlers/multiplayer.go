@@ -188,6 +188,23 @@ func stripRankings(rankings []game.RankingEntry) []game.RankingEntry {
 
 // --- Handlers on GameManager ---
 
+func (mm *MultiplayerManager) validatePlayerToken(r *http.Request, playerID string) (int, error) {
+	token := r.Header.Get("X-Player-Token")
+	if token == "" {
+		token = r.URL.Query().Get("token")
+	}
+	if token == "" {
+		return http.StatusUnauthorized, fmt.Errorf("missing player token")
+	}
+	mm.mu.RLock()
+	stored, ok := mm.playerTokens[playerID]
+	mm.mu.RUnlock()
+	if !ok || stored != token {
+		return http.StatusForbidden, fmt.Errorf("invalid token")
+	}
+	return 0, nil
+}
+
 func (m *GameManager) MultiplayerPageHandler(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "layout.html", map[string]any{
 		"Page": "multiplayer",
@@ -385,7 +402,7 @@ func (m *GameManager) JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-type startGameRequest struct {
+type roomPlayerRequest struct {
 	RoomCode string `json:"roomCode"`
 	PlayerID string `json:"playerID"`
 }
@@ -398,13 +415,19 @@ func (m *GameManager) StartGameHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req startGameRequest
+	var req roomPlayerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
 		return
 	}
 
 	mm := m.multi
+
+	if status, err := m.multi.validatePlayerToken(r, req.PlayerID); err != nil {
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
 	mm.mu.Lock()
 	room, ok := mm.rooms[req.RoomCode]
 	if !ok {
@@ -467,6 +490,12 @@ func (m *GameManager) MultiGuessHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	mm := m.multi
+
+	if status, err := m.multi.validatePlayerToken(r, req.PlayerID); err != nil {
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
 	mm.mu.Lock()
 	room, ok := mm.rooms[req.RoomCode]
 	if !ok {
@@ -529,6 +558,12 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mm := m.multi
+
+	if status, err := m.multi.validatePlayerToken(r, playerID); err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+
 	mm.mu.RLock()
 	room, ok := mm.rooms[roomCode]
 	if !ok {
@@ -592,17 +627,6 @@ func (m *GameManager) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type leaveRoomRequest struct {
-	RoomCode string `json:"roomCode"`
-	PlayerID string `json:"playerID"`
-}
-
-type restartGameRequest struct {
-	RoomCode string `json:"roomCode"`
-	PlayerID string `json:"playerID"`
-	Token    string `json:"token"`
-}
-
 func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -611,13 +635,19 @@ func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req restartGameRequest
+	var req roomPlayerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
 		return
 	}
 
 	mm := m.multi
+
+	if status, err := m.multi.validatePlayerToken(r, req.PlayerID); err != nil {
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
 	mm.mu.Lock()
 	room, ok := mm.rooms[req.RoomCode]
 	if !ok {
@@ -629,12 +659,6 @@ func (m *GameManager) RestartGameHandler(w http.ResponseWriter, r *http.Request)
 	if room.CreatorID != req.PlayerID {
 		mm.mu.Unlock()
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "only the creator can restart the game"})
-		return
-	}
-
-	if mm.playerTokens[req.PlayerID] != req.Token {
-		mm.mu.Unlock()
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "invalid token"})
 		return
 	}
 
@@ -663,13 +687,19 @@ func (m *GameManager) LeaveRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 
-	var req leaveRoomRequest
+	var req roomPlayerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
 		return
 	}
 
 	mm := m.multi
+
+	if status, err := m.multi.validatePlayerToken(r, req.PlayerID); err != nil {
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
 	mm.removePlayerFromRoom(req.RoomCode, req.PlayerID)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }

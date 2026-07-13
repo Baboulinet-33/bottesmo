@@ -27,8 +27,6 @@ bottesmo/
 │   │   ├── game.html
 │   │   └── multiplayer.html
 │   └── static/
-│       ├── lib/
-│       │   └── typo/          # Typo.js + fr_FR Hunspell dictionary
 │       ├── style.css
 │       ├── app.js
 │       └── multiplayer.js
@@ -64,7 +62,7 @@ Les fichiers dictionnaire peuvent optionnellement commencer par une ligne `DICT_
 
 ### Validation orthographique
 
-La validation orthographique des mots saisis par le joueur est effectuée côté client via Typo.js (dictionnaire Hunspell français). Le serveur n'effectue plus de validation dictionnaire.
+La validation orthographique des mots saisis par le joueur est effectuée côté serveur.
 
 ## Spécifications
 

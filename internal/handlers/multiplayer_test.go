@@ -69,12 +69,10 @@ func createAndStartRoom(t *testing.T, gm *GameManager, nickname string) (string,
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	roomCode := resp["roomCode"].(string)
 	creatorID := resp["playerID"].(string)
-	token := resp["token"].(string)
 
 	// Start game
 	startBody, _ := json.Marshal(map[string]any{"roomCode": roomCode, "playerID": creatorID})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	req2.Header.Set("X-Player-Token", token)
 	w2 := httptest.NewRecorder()
 	gm.StartGameHandler(w2, req2)
 	if w2.Code != http.StatusOK {
@@ -259,13 +257,6 @@ func TestProgressBroadcast_IncludesRankings(t *testing.T) {
 		"word":     wrongGuess,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/guess", bytes.NewReader(guessBody))
-
-	// Get the creator's token
-	gm.multi.mu.RLock()
-	creatorToken := gm.multi.playerTokens[creatorID]
-	gm.multi.mu.RUnlock()
-	req.Header.Set("X-Player-Token", creatorToken)
-
 	w := httptest.NewRecorder()
 	gm.MultiGuessHandler(w, req)
 	// We don't care about the response status for invalid guess
@@ -322,13 +313,8 @@ func TestSSEHandler_ContextCancellation_CleansUp(t *testing.T) {
 
 	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
 
-	// Get the creator's token
-	gm.multi.mu.RLock()
-	creatorToken := gm.multi.playerTokens[creatorID]
-	gm.multi.mu.RUnlock()
-
 	ctx, cancel := context.WithCancel(context.Background())
-	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID+"&token="+creatorToken, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
 	req = req.WithContext(ctx)
 	w := httptest.NewRecorder()
 
@@ -377,16 +363,11 @@ func TestSSEHandler_WriteError_CleansUp(t *testing.T) {
 
 	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
 
-	// Get the creator's token
-	gm.multi.mu.RLock()
-	creatorToken := gm.multi.playerTokens[creatorID]
-	gm.multi.mu.RUnlock()
-
 	fw := &failingWriter{
 		header: make(http.Header),
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID+"&token="+creatorToken, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
 	w := &sseResponseWriter{ResponseWriter: fw, flusher: fw}
 
 	done := make(chan struct{})
@@ -426,13 +407,8 @@ func TestSSEHandler_ChannelClose_CleansUp(t *testing.T) {
 
 	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
 
-	// Get the creator's token
-	gm.multi.mu.RLock()
-	creatorToken := gm.multi.playerTokens[creatorID]
-	gm.multi.mu.RUnlock()
-
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID+"&token="+creatorToken, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
 
 	done := make(chan struct{})
 	go func() {
@@ -464,16 +440,11 @@ func TestSSEHandler_HeartbeatSent(t *testing.T) {
 
 	roomCode, creatorID := createAndStartRoom(t, gm, "Alice")
 
-	// Get the creator's token
-	gm.multi.mu.RLock()
-	creatorToken := gm.multi.playerTokens[creatorID]
-	gm.multi.mu.RUnlock()
-
 	fw := &slowFlushWriter{
 		header: make(http.Header),
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID+"&token="+creatorToken, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/sse?room="+roomCode+"&player="+creatorID, nil)
 	w := &sseResponseWriter{ResponseWriter: fw, flusher: fw}
 
 	done := make(chan struct{})
@@ -550,228 +521,4 @@ type sseResponseWriter struct {
 
 func (w *sseResponseWriter) Flush() {
 	w.flusher.Flush()
-}
-
-// --- Token validation tests ---
-
-func createRoomAndGetToken(t *testing.T, gm *GameManager) (roomCode, playerID, token string) {
-	t.Helper()
-	body := map[string]any{
-		"nickname":  "Alice",
-		"mode":      "progressif",
-		"wordCount": 3,
-	}
-	b, _ := json.Marshal(body)
-	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/create", bytes.NewReader(b))
-	w := httptest.NewRecorder()
-	gm.CreateRoomHandler(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("create room failed: %s", w.Body.String())
-	}
-	var resp map[string]any
-	json.Unmarshal(w.Body.Bytes(), &resp)
-	return resp["roomCode"].(string), resp["playerID"].(string), resp["token"].(string)
-}
-
-func TestStartGameHandler_TokenValidation(t *testing.T) {
-	setupMultiTestDicts(t)
-	gm := newTestGameManager()
-	roomCode, playerID, token := createRoomAndGetToken(t, gm)
-
-	startBody, _ := json.Marshal(map[string]any{"roomCode": roomCode, "playerID": playerID})
-
-	// Missing token
-	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	w := httptest.NewRecorder()
-	gm.StartGameHandler(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401 for missing token, got %d", w.Code)
-	}
-
-	// Invalid token
-	req2 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	req2.Header.Set("X-Player-Token", "badtoken")
-	w2 := httptest.NewRecorder()
-	gm.StartGameHandler(w2, req2)
-	if w2.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for invalid token, got %d", w2.Code)
-	}
-
-	// Valid token
-	req3 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	req3.Header.Set("X-Player-Token", token)
-	w3 := httptest.NewRecorder()
-	gm.StartGameHandler(w3, req3)
-	if w3.Code != http.StatusOK {
-		t.Errorf("expected 200 for valid token, got %d: %s", w3.Code, w3.Body.String())
-	}
-}
-
-func TestMultiGuessHandler_TokenValidation(t *testing.T) {
-	setupMultiTestDicts(t)
-	gm := newTestGameManager()
-	roomCode, creatorID, token := createRoomAndGetToken(t, gm)
-
-	// Start game first
-	startBody, _ := json.Marshal(map[string]any{"roomCode": roomCode, "playerID": creatorID})
-	startReq := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	startReq.Header.Set("X-Player-Token", token)
-	startW := httptest.NewRecorder()
-	gm.StartGameHandler(startW, startReq)
-
-	guessBody, _ := json.Marshal(map[string]any{
-		"roomCode": roomCode,
-		"playerID": creatorID,
-		"word":     "ABRITE",
-	})
-
-	// Missing token
-	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/guess", bytes.NewReader(guessBody))
-	w := httptest.NewRecorder()
-	gm.MultiGuessHandler(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401 for missing token, got %d", w.Code)
-	}
-
-	// Invalid token
-	req2 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/guess", bytes.NewReader(guessBody))
-	req2.Header.Set("X-Player-Token", "badtoken")
-	w2 := httptest.NewRecorder()
-	gm.MultiGuessHandler(w2, req2)
-	if w2.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for invalid token, got %d", w2.Code)
-	}
-
-	// Valid token
-	req3 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/guess", bytes.NewReader(guessBody))
-	req3.Header.Set("X-Player-Token", token)
-	w3 := httptest.NewRecorder()
-	gm.MultiGuessHandler(w3, req3)
-	if w3.Code != http.StatusOK {
-		t.Errorf("expected 200 for valid token, got %d: %s", w3.Code, w3.Body.String())
-	}
-}
-
-func TestLeaveRoomHandler_TokenValidation(t *testing.T) {
-	setupMultiTestDicts(t)
-	gm := newTestGameManager()
-	roomCode, playerID, token := createRoomAndGetToken(t, gm)
-
-	leaveBody, _ := json.Marshal(map[string]any{
-		"roomCode": roomCode,
-		"playerID": playerID,
-	})
-
-	// Missing token
-	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/leave", bytes.NewReader(leaveBody))
-	w := httptest.NewRecorder()
-	gm.LeaveRoomHandler(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401 for missing token, got %d", w.Code)
-	}
-
-	// Invalid token
-	req2 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/leave", bytes.NewReader(leaveBody))
-	req2.Header.Set("X-Player-Token", "badtoken")
-	w2 := httptest.NewRecorder()
-	gm.LeaveRoomHandler(w2, req2)
-	if w2.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for invalid token, got %d", w2.Code)
-	}
-
-	// Valid token
-	req3 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/leave", bytes.NewReader(leaveBody))
-	req3.Header.Set("X-Player-Token", token)
-	w3 := httptest.NewRecorder()
-	gm.LeaveRoomHandler(w3, req3)
-	if w3.Code != http.StatusOK {
-		t.Errorf("expected 200 for valid token, got %d: %s", w3.Code, w3.Body.String())
-	}
-}
-
-func TestSSEHandler_TokenValidation(t *testing.T) {
-	setupMultiTestDicts(t)
-	gm := newTestGameManager()
-	roomCode, playerID, token := createRoomAndGetToken(t, gm)
-
-	// Missing token
-	req := httptest.NewRequest(http.MethodGet, "/api/multiplayer/events?room="+roomCode+"&player="+playerID, nil)
-	w := httptest.NewRecorder()
-	gm.SSEHandler(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401 for missing token, got %d", w.Code)
-	}
-
-	// Invalid token
-	req2 := httptest.NewRequest(http.MethodGet, "/api/multiplayer/events?room="+roomCode+"&player="+playerID+"&token=badtoken", nil)
-	w2 := httptest.NewRecorder()
-	gm.SSEHandler(w2, req2)
-	if w2.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for invalid token, got %d", w2.Code)
-	}
-
-	// Valid token — handler blocks on streaming, just verify it doesn't return 401/403
-	ctx, cancel := context.WithCancel(context.Background())
-	req3 := httptest.NewRequest(http.MethodGet, "/api/multiplayer/events?room="+roomCode+"&player="+playerID+"&token="+token, nil)
-	req3 = req3.WithContext(ctx)
-	w3 := httptest.NewRecorder()
-	done := make(chan struct{})
-	go func() {
-		gm.SSEHandler(w3, req3)
-		close(done)
-	}()
-	time.Sleep(50 * time.Millisecond)
-	cancel()
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("SSEHandler did not return")
-	}
-	if w3.Code == http.StatusUnauthorized || w3.Code == http.StatusForbidden {
-		t.Errorf("expected non-error status for valid token, got %d", w3.Code)
-	}
-}
-
-func TestRestartGameHandler_TokenValidation(t *testing.T) {
-	setupMultiTestDicts(t)
-	gm := newTestGameManager()
-	roomCode, playerID, token := createRoomAndGetToken(t, gm)
-
-	// Start game so restart is valid
-	startBody, _ := json.Marshal(map[string]any{"roomCode": roomCode, "playerID": playerID})
-	startReq := httptest.NewRequest(http.MethodPost, "/api/multiplayer/start", bytes.NewReader(startBody))
-	startReq.Header.Set("X-Player-Token", token)
-	startW := httptest.NewRecorder()
-	gm.StartGameHandler(startW, startReq)
-
-	restartBody, _ := json.Marshal(map[string]any{
-		"roomCode": roomCode,
-		"playerID": playerID,
-	})
-
-	// Missing token
-	req := httptest.NewRequest(http.MethodPost, "/api/multiplayer/restart", bytes.NewReader(restartBody))
-	w := httptest.NewRecorder()
-	gm.RestartGameHandler(w, req)
-	if w.Code != http.StatusUnauthorized {
-		t.Errorf("expected 401 for missing token, got %d", w.Code)
-	}
-
-	// Invalid token
-	req2 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/restart", bytes.NewReader(restartBody))
-	req2.Header.Set("X-Player-Token", "badtoken")
-	w2 := httptest.NewRecorder()
-	gm.RestartGameHandler(w2, req2)
-	if w2.Code != http.StatusForbidden {
-		t.Errorf("expected 403 for invalid token, got %d", w2.Code)
-	}
-
-	// Valid token
-	req3 := httptest.NewRequest(http.MethodPost, "/api/multiplayer/restart", bytes.NewReader(restartBody))
-	req3.Header.Set("X-Player-Token", token)
-	w3 := httptest.NewRecorder()
-	gm.RestartGameHandler(w3, req3)
-	if w3.Code != http.StatusOK {
-		t.Errorf("expected 200 for valid token, got %d: %s", w3.Code, w3.Body.String())
-	}
 }

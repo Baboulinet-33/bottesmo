@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 roomCode: mp.roomCode,
                 playerID: mp.playerID
             })], { type: 'application/json' });
-            navigator.sendBeacon('/api/multiplayer/leave?token=' + encodeURIComponent(mp.token), blob);
+            navigator.sendBeacon('/api/multiplayer/leave', blob);
         }
     });
 });
@@ -203,7 +203,7 @@ function startGame() {
 
     fetch('/api/multiplayer/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
     })
     .then(res => res.json())
@@ -228,7 +228,7 @@ function setupSSE(roomCode, playerID) {
         mp.eventSource.close();
     }
 
-    const url = '/api/multiplayer/events?room=' + encodeURIComponent(roomCode) + '&player=' + encodeURIComponent(playerID) + '&token=' + encodeURIComponent(mp.token);
+    const url = '/api/multiplayer/events?room=' + encodeURIComponent(roomCode) + '&player=' + encodeURIComponent(playerID);
     mp.eventSource = new EventSource(url);
 
     mp.eventSource.addEventListener('player-joined', (e) => {
@@ -322,11 +322,8 @@ function fetchGameState() {
 function loadGame() {
     fetchGameState().then(data => {
         if (data.error) { return; }
-        mp.wordSequence = data.wordSequence || [];
-        mp.currentWordIdx = data.currentWordIdx || 0;
-        mp.wordGames = data.wordGames || [];
+        restoreGameState(data);
         mp.players = data.players || [];
-        loadCurrentWord();
         updateProgressPlayers();
     });
 }
@@ -406,7 +403,7 @@ function leaveRoom() {
     if (mp.roomCode && mp.playerID) {
         fetch('/api/multiplayer/leave', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
         }).catch(() => {});
     }
@@ -422,8 +419,8 @@ function leaveRoom() {
 function newGame() {
     fetch('/api/multiplayer/restart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
-        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomCode: mp.roomCode, playerID: mp.playerID, token: mp.token })
     })
     .then(res => res.json())
     .then(data => {
@@ -578,16 +575,14 @@ function handleKeyClick(key) {
 
 document.addEventListener('keydown', (e) => {
     if (!document.getElementById('screen-game') || document.getElementById('screen-game').style.display === 'none') return;
-    if (mp.gameOver) return;
-    if (e.key === 'Enter') {
+    let key = null;
+    if (e.key === 'Enter' || e.key === 'Backspace') {
         e.preventDefault();
-        submitCurrentWord();
-    } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        handleBackspace();
+        key = e.key;
     } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-        handleLetter(e.key.toUpperCase());
+        key = e.key.toUpperCase();
     }
+    if (key) handleKeyClick(key);
 });
 
 document.getElementById('multi-submit-btn')?.addEventListener('click', () => {
@@ -651,7 +646,7 @@ function submitGuess(word) {
 
     fetch('/api/multiplayer/guess', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Player-Token': mp.token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             roomCode: mp.roomCode,
             playerID: mp.playerID,
@@ -671,35 +666,35 @@ function submitGuess(word) {
         updateGridRow(row, data.results);
         updateKeyboard(data.results);
         mp.attempts.push(word);
-
         mp.guessResults.push(data.results);
 
-        if (data.wordFinished) {
-            if (data.playerFinished) {
-                if (data.playerFailed) {
-                    showMultiMessage('Perdu ! Vous avez épuisé vos essais.', 'lose');
-                } else {
-                    showMultiMessage('Bravo ! Vous avez trouvé tous les mots !', 'win');
-                }
-                btn.disabled = true;
-                mp.gameOver = true;
-                if (data.rankings) {
-                    renderRankings(data.rankings);
-                    showScreen('results');
-                }
-            } else {
-                const isWon = data.wordWon;
-                showMultiMessage(isWon ? 'Mot trouvé !' : 'Mot échoué', isWon ? 'win' : 'lose');
-                setTimeout(() => {
-                    mp.currentWordIdx = data.currentWordIdx;
-                    loadGame();
-                    enableInput();
-                }, 1500);
-            }
-        } else {
+        if (!data.wordFinished) {
             prepareNextRow();
             enableInput();
+            return;
         }
+
+        if (data.playerFinished) {
+            btn.disabled = true;
+            mp.gameOver = true;
+            showMultiMessage(
+                data.playerFailed ? 'Perdu ! Vous avez épuisé vos essais.' : 'Bravo ! Vous avez trouvé tous les mots !',
+                data.playerFailed ? 'lose' : 'win'
+            );
+            if (data.rankings) {
+                renderRankings(data.rankings);
+                showScreen('results');
+            }
+            return;
+        }
+
+        const isWon = data.wordWon;
+        showMultiMessage(isWon ? 'Mot trouvé !' : 'Mot échoué', isWon ? 'win' : 'lose');
+        setTimeout(() => {
+            mp.currentWordIdx = data.currentWordIdx;
+            loadGame();
+            enableInput();
+        }, 1500);
     })
     .catch(err => {
         showMultiMessage('Erreur de connexion', 'error');

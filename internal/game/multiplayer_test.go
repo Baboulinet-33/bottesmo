@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -78,7 +79,7 @@ func TestAddPlayer(t *testing.T) {
 func TestAddPlayerMaxPlayers(t *testing.T) {
 	room := NewMultiplayerRoom("ABC123", "progressif", 5, "creator1", "Alice")
 	for i := 1; i < 20; i++ {
-		room.AddPlayer("p"+string(rune('0'+i)), "Player")
+		room.AddPlayer(fmt.Sprintf("p%d", i), "Player")
 	}
 	err := room.AddPlayer("overflow", "Overflow")
 	if err == nil {
